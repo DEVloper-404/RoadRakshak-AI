@@ -1,0 +1,2264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RoadRakshak — AI Traffic Enforcement System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #0A0E1A;
+    --surface: #0F1629;
+    --surface2: #151C35;
+    --border: #1E2A4A;
+    --accent: #00C2FF;
+    --accent-dim: rgba(0,194,255,0.12);
+    --red: #FF3B3B;
+    --red-dim: rgba(255,59,59,0.12);
+    --green: #22C55E;
+    --green-dim: rgba(34,197,94,0.10);
+    --amber: #F5A623;
+    --amber-dim: rgba(245,166,35,0.12);
+    --text: #E8EDF8;
+    --muted: #5A6A8A;
+    --muted2: #8899BB;
+    --font: 'Inter', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── LAYOUT ─── */
+  .shell { display:flex; min-height:100vh; }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    width: 230px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    flex-shrink: 0;
+    position: fixed;
+    top:0; left:0; bottom:0;
+    z-index: 100;
+  }
+
+  .logo-wrap {
+    padding: 22px 20px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .logo-icon svg { width:20px; height:20px; }
+
+  .logo-text { line-height: 1.2; }
+  .logo-text .name { font-weight:700; font-size:15px; color:#fff; letter-spacing:.3px; }
+  .logo-text .tagline { font-size:10px; color: var(--muted2); letter-spacing:.8px; text-transform:uppercase; }
+
+  .nav { padding: 12px 10px; flex:1; }
+  .nav-section { margin-bottom: 6px; }
+  .nav-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 8px 10px 4px;
+    font-weight: 600;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--muted2);
+    font-size: 13.5px;
+    font-weight: 500;
+    transition: all .15s;
+    position: relative;
+    border: 1px solid transparent;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-color: rgba(0,194,255,0.2);
+  }
+  .nav-item svg { width:16px; height:16px; flex-shrink:0; }
+
+  .nav-badge {
+    margin-left: auto;
+    background: var(--red);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .sidebar-footer {
+    padding: 14px 12px;
+    border-top: 1px solid var(--border);
+  }
+  .system-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted2);
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse-dot 2s ease infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:.6; transform:scale(.8); }
+  }
+
+  /* ─── MAIN ─── */
+  .main {
+    margin-left: 230px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* ─── TOPBAR ─── */
+  .topbar {
+    height: 56px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .topbar-title { font-size:15px; font-weight:600; color:#fff; }
+  .topbar-sub { font-size:12px; color:var(--muted); margin-left:4px; }
+  .topbar-right { margin-left:auto; display:flex; align-items:center; gap:12px; }
+  .topbar-time { font-family:var(--mono); font-size:12px; color:var(--muted2); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all .15s;
+    font-family: var(--font);
+  }
+  .btn svg { width:14px; height:14px; }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #33CEFF; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { background: #ff5555; }
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--border); }
+  .btn-green { background: var(--green); color: #000; }
+  .btn-green:hover { background: #33d870; }
+  .btn-amber { background: var(--amber); color: #000; }
+
+  /* ─── PAGES ─── */
+  .page { display:none; padding: 24px 28px; }
+  .page.active { display:block; }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted2);
+    letter-spacing:.8px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title svg { width:14px; height:14px; color:var(--accent); }
+
+  /* ─── STATS ROW ─── */
+  .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content:'';
+    position:absolute;
+    top:0; left:0; right:0;
+    height: 2px;
+    background: var(--accent);
+  }
+  .stat-card.red::before { background: var(--red); }
+  .stat-card.green::before { background: var(--green); }
+  .stat-card.amber::before { background: var(--amber); }
+  .stat-label { font-size:11px; color:var(--muted); font-weight:600; letter-spacing:.7px; text-transform:uppercase; margin-bottom:8px; }
+  .stat-value { font-family:var(--mono); font-size:28px; font-weight:600; color:#fff; line-height:1; }
+  .stat-delta { font-size:11px; color:var(--green); margin-top:6px; }
+
+  /* ─── CAMERA PAGE ─── */
+  .cam-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .cam-block {
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    aspect-ratio: 16/10;
+    cursor: pointer;
+    transition: border-color .2s;
+  }
+  .cam-block:hover { border-color: var(--accent); }
+  .cam-block.alert-cam { border-color: var(--red); box-shadow: 0 0 14px rgba(255,59,59,.25); }
+
+  .cam-feed {
+    width:100%; height:100%;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Simulated camera feed backgrounds */
+  .cam-feed.road1 { background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%); }
+  .cam-feed.road2 { background: linear-gradient(160deg, #1a2a1a 0%, #1e3a1e 40%, #0d2b0d 100%); }
+  .cam-feed.road3 { background: linear-gradient(160deg, #2a1a1a 0%, #3a1e1e 40%, #2b0d0d 100%); }
+  .cam-feed.road4 { background: linear-gradient(160deg, #1a1a2a 0%, #252540 40%, #1a1060 100%); }
+  .cam-feed.road5 { background: linear-gradient(160deg, #1a2a2a 0%, #1a3a3a 40%, #0d2b2b 100%); }
+  .cam-feed.road6 { background: linear-gradient(160deg, #2a2a1a 0%, #3a3a1e 40%, #2b2b0d 100%); }
+
+  /* Scan line animation */
+  .cam-feed::after {
+    content:'';
+    position:absolute;
+    top:-100%; left:0; right:0;
+    height: 40%;
+    background: linear-gradient(to bottom, transparent, rgba(0,194,255,0.04), transparent);
+    animation: scanline 4s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes scanline {
+    0%{ top:-40%; }
+    100%{ top:110%; }
+  }
+
+  /* Road/vehicle SVG drawings inside cam */
+  .cam-scene {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 60%;
+  }
+
+  /* Bounding box overlay */
+  .bbox {
+    position: absolute;
+    border: 2px solid #00FF88;
+    border-radius: 3px;
+    animation: bbox-pulse 1.5s ease infinite;
+  }
+  .bbox-label {
+    position: absolute;
+    top: -20px; left: -1px;
+    background: #00FF88;
+    color: #000;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+  @keyframes bbox-pulse {
+    0%,100%{ opacity:1; }
+    50%{ opacity:.6; }
+  }
+
+  .cam-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .cam-info {
+    position: absolute;
+    bottom: 8px; left: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .cam-id {
+    background: rgba(0,0,0,.7);
+    border: 1px solid rgba(0,194,255,.3);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 7px;
+    border-radius: 4px;
+  }
+  .cam-loc {
+    color: rgba(255,255,255,.6);
+    font-size: 10px;
+  }
+  .cam-rec {
+    position: absolute;
+    top: 10px; right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(0,0,0,.6);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    color: var(--red);
+    font-weight: 600;
+  }
+  .rec-dot {
+    width: 6px; height: 6px;
+    background: var(--red);
+    border-radius: 50%;
+    animation: pulse-dot 1s ease infinite;
+  }
+
+  .cam-ai-tag {
+    position: absolute;
+    top: 10px; left: 10px;
+    background: rgba(0,194,255,.15);
+    border: 1px solid rgba(0,194,255,.3);
+    color: var(--accent);
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing:.5px;
+    text-transform: uppercase;
+  }
+
+  .alert-badge {
+    position: absolute;
+    top: 10px; left: 10px;
+    background: var(--red);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    animation: flash 1s ease infinite;
+    letter-spacing:.5px;
+  }
+  @keyframes flash {
+    0%,100%{ opacity:1; }
+    50%{ opacity:.4; }
+  }
+
+  /* ─── VIOLATION PAGE ─── */
+  .violations-wrap { max-width: 100%; }
+  .violation-list { display:flex; flex-direction:column; gap:0; }
+
+  .violation-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all .2s;
+    overflow: hidden;
+    animation: slide-in .4s ease;
+    position: relative;
+  }
+  @keyframes slide-in {
+    from { opacity:0; transform:translateY(-16px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .violation-bar:hover { border-color: var(--accent); background: var(--surface2); }
+  .violation-bar.new { border-color: var(--red); box-shadow: 0 0 12px rgba(255,59,59,.2); }
+
+  .vbar-severity {
+    width: 4px;
+    align-self: stretch;
+    flex-shrink: 0;
+  }
+  .sev-high { background: var(--red); }
+  .sev-med  { background: var(--amber); }
+  .sev-low  { background: var(--green); }
+
+  .vbar-content {
+    display: flex;
+    align-items: center;
+    padding: 13px 16px;
+    flex:1;
+    gap: 0;
+  }
+  .vbar-id {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted2);
+    width: 110px;
+    flex-shrink: 0;
+  }
+  .vbar-plate {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    width: 130px;
+    flex-shrink: 0;
+    background: var(--accent-dim);
+    padding: 4px 10px;
+    border-radius: 5px;
+    border: 1px solid rgba(0,194,255,.2);
+  }
+  .vbar-type {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0 16px;
+  }
+  .vtype-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .vtype-badge.red { background: var(--red-dim); color: var(--red); border:1px solid rgba(255,59,59,.2); }
+  .vtype-badge.amber { background: var(--amber-dim); color: var(--amber); border:1px solid rgba(245,166,35,.2); }
+  .vtype-badge.blue { background: var(--accent-dim); color: var(--accent); border:1px solid rgba(0,194,255,.2); }
+
+  .vbar-cam {
+    width: 80px;
+    font-size: 12px;
+    color: var(--muted2);
+    flex-shrink: 0;
+    font-family: var(--mono);
+  }
+  .vbar-time {
+    width: 80px;
+    font-size: 11px;
+    color: var(--muted);
+    flex-shrink: 0;
+    text-align: right;
+  }
+  .vbar-arrow {
+    padding: 0 16px;
+    color: var(--muted);
+  }
+
+  /* ─── HIGH RISK PAGE ─── */
+  .risk-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .risk-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+  .risk-card.critical { border-color: var(--red); }
+  .risk-card.high { border-color: var(--amber); }
+
+  .risk-header {
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .risk-sev-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .risk-card.critical .risk-sev-dot { background: var(--red); box-shadow:0 0 8px var(--red); animation:pulse-dot 1s infinite; }
+  .risk-card.high .risk-sev-dot { background: var(--amber); box-shadow:0 0 8px var(--amber); }
+
+  .risk-title { font-size:14px; font-weight:600; color:#fff; flex:1; }
+  .risk-time { font-family:var(--mono); font-size:11px; color:var(--muted); }
+
+  .risk-body { padding: 14px 18px; }
+
+  .risk-location {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .risk-location svg { width:14px; height:14px; color:var(--red); margin-top:2px; flex-shrink:0; }
+  .risk-location-text {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .risk-location-text .place { font-weight:600; color:#fff; }
+  .risk-location-text .detail { color:var(--muted2); font-size:11px; }
+
+  /* Radar animation */
+  .radar-wrap {
+    width:80px; height:80px;
+    margin: 12px auto;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .radar-circle {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid var(--red);
+    top:50%; left:50%;
+    transform: translate(-50%,-50%);
+    animation: radar-expand 2s ease-out infinite;
+  }
+  .radar-circle:nth-child(2) { animation-delay:.7s; }
+  .radar-circle:nth-child(3) { animation-delay:1.4s; }
+  @keyframes radar-expand {
+    0%{ width:10px; height:10px; opacity:.9; }
+    100%{ width:80px; height:80px; opacity:0; }
+  }
+  .radar-center {
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    width:12px; height:12px;
+    background:var(--red);
+    border-radius:50%;
+    box-shadow:0 0 10px var(--red);
+  }
+
+  .risk-row { display:flex; gap:12px; align-items:center; }
+  .risk-detail { flex:1; }
+
+  .risk-meta { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:10px; }
+  /* .risk-meta-item intentionally left without additional rules; styles applied via container */
+  .risk-meta-label { font-size:10px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+  .risk-meta-value { font-size:13px; font-weight:500; color:var(--text); font-family:var(--mono); }
+
+  .risk-plate {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--amber);
+    background: var(--amber-dim);
+    border: 1px solid rgba(245,166,35,.25);
+    padding: 5px 12px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+  .risk-actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* AI Photo identification strip */
+  .ai-photo-strip {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .ai-photo {
+    flex:1;
+    aspect-ratio:4/3;
+    background: #000;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    position: relative;
+  }
+  .ai-photo-scene {
+    width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+    position: relative;
+  }
+  .ai-label {
+    position: absolute;
+    bottom: 4px; left: 4px;
+    background: rgba(0,0,0,.7);
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--accent);
+    padding: 2px 5px;
+    border-radius: 3px;
+  }
+
+  /* ─── VIOLATORS RANKING ─── */
+  .rank-table { width:100%; border-collapse:collapse; }
+  .rank-table th {
+    text-align:left; padding:10px 16px;
+    font-size:10px; font-weight:600;
+    color:var(--muted); text-transform:uppercase; letter-spacing:.7px;
+    border-bottom:1px solid var(--border);
+  }
+  .rank-table td { padding:12px 16px; border-bottom:1px solid rgba(30,42,74,.5); font-size:13px; }
+  .rank-table tr:last-child td { border:none; }
+  .rank-table tr:hover td { background:var(--surface2); }
+  .rank-no { font-family:var(--mono); font-weight:700; color:var(--muted2); width:40px; }
+  .rank-no.gold { color:#FFD700; }
+  .rank-no.silver { color:#C0C0C0; }
+  .rank-no.bronze { color:#CD7F32; }
+  .rank-plate-cell { font-family:var(--mono); color:var(--accent); font-weight:600; }
+  .rank-bar-wrap { display:flex; align-items:center; gap:8px; }
+  .rank-bar { height:5px; border-radius:3px; background:var(--red); transition:width .5s ease; }
+  .rank-count { font-family:var(--mono); font-size:12px; color:var(--muted2); min-width:20px; }
+
+  /* ─── CHALLAN MODAL ─── */
+  .modal-overlay {
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(0,0,0,.7);
+    z-index: 200;
+    align-items:center;
+    justify-content:center;
+    backdrop-filter:blur(4px);
+  }
+  .modal-overlay.open { display:flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 560px;
+    max-height: 90vh;
+    overflow-y:auto;
+    box-shadow: 0 24px 80px rgba(0,0,0,.8);
+  }
+  .modal-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display:flex; align-items:center; gap:10px;
+  }
+  .modal-header h2 { font-size:16px; font-weight:700; color:#fff; flex:1; }
+  .modal-close {
+    width:28px; height:28px; border-radius:6px;
+    background:var(--surface2); border:1px solid var(--border);
+    color:var(--muted2); cursor:pointer; display:flex; align-items:center; justify-content:center;
+    font-size:16px; font-family:var(--font);
+  }
+  .modal-body { padding:24px; }
+
+  /* Challan receipt */
+  .challan-receipt {
+    background: #fff;
+    border-radius: 10px;
+    padding: 24px;
+    color: #1a1a2e;
+    font-family: var(--mono);
+    margin-bottom: 20px;
+  }
+  .challan-header { text-align:center; border-bottom:2px solid #1a1a2e; padding-bottom:14px; margin-bottom:14px; }
+  .challan-header .govt { font-size:10px; font-weight:700; letter-spacing:1px; color:#555; text-transform:uppercase; }
+  .challan-header h3 { font-size:18px; font-weight:700; color:#1a1a2e; margin:4px 0; }
+  .challan-header .sub { font-size:10px; color:#555; }
+  .challan-no { display:flex; justify-content:space-between; font-size:11px; margin-bottom:14px; color:#333; }
+  .challan-row { display:flex; justify-content:space-between; align-items:baseline; padding:5px 0; border-bottom:1px dashed #ddd; font-size:12px; }
+  .challan-row .label { color:#555; }
+  .challan-row .value { font-weight:700; color:#1a1a2e; }
+  .challan-fine { text-align:center; margin:16px 0 10px; padding:12px; background:#f5f5f5; border-radius:6px; }
+  .challan-fine .fine-label { font-size:10px; color:#888; text-transform:uppercase; letter-spacing:1px; }
+  .challan-fine .fine-amount { font-size:28px; font-weight:700; color:#c0392b; }
+  .challan-barcode { margin:14px auto 0; text-align:center; }
+  .barcode-svg { width:200px; height:40px; }
+  .challan-stamp { float:right; width:60px; height:60px; border:2px solid #1a1a2e; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; text-align:center; color:#c0392b; line-height:1.2; }
+
+  .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+  .detail-item { padding:6px 0; }
+  .detail-label { font-size:10px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+  .detail-value { font-size:14px; color:#fff; font-weight:500; }
+  .accuracy-bar-wrap { margin-top:4px; }
+  .accuracy-bar { height:5px; border-radius:3px; background:var(--green); }
+  .accuracy-text { font-size:12px; color:var(--green); font-family:var(--mono); font-weight:600; margin-top:2px; }
+
+  .photo-evidence {
+    margin-bottom:18px;
+  }
+  .photo-evidence-label { font-size:11px; color:var(--muted2); font-weight:600; letter-spacing:.5px; text-transform:uppercase; margin-bottom:8px; }
+  .photo-evidence-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .photo-ev {
+    aspect-ratio:4/3;
+    border-radius:6px;
+    border:1px solid var(--border);
+    overflow:hidden;
+    position:relative;
+    background:#000;
+  }
+
+  .modal-actions { display:flex; gap:10px; flex-wrap:wrap; }
+
+  /* ─── SEND MESSAGE MODAL ─── */
+  .send-modal { width:460px; }
+  .form-group { margin-bottom:16px; }
+  .form-label { font-size:12px; color:var(--muted2); font-weight:600; margin-bottom:6px; display:block; }
+  .form-input, .form-select, .form-textarea {
+    width:100%; padding:9px 12px;
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:7px; color:var(--text); font-size:13px; font-family:var(--font);
+    outline:none; transition:border-color .15s;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--accent); }
+  .form-textarea { resize:vertical; min-height:80px; }
+  .form-select { cursor:pointer; }
+  option { background:var(--surface2); }
+
+  /* ─── VIOLATIONS DETAIL MODAL ─── */
+  .vdetail-modal { width:620px; }
+
+  /* AI ID photos in modal */
+  .ai-id-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px; }
+  .ai-id-photo {
+    border-radius:8px; overflow:hidden; border:1px solid var(--border);
+    position:relative; background:#000; aspect-ratio:4/3;
+  }
+  .ai-id-photo canvas { width:100%; height:100%; display:block; }
+  .ai-id-tag {
+    position:absolute; bottom:4px; left:4px;
+    background:rgba(0,0,0,.75); font-family:var(--mono); font-size:8px;
+    color:var(--accent); padding:2px 5px; border-radius:3px;
+  }
+  .conf-chip {
+    position:absolute; top:4px; right:4px;
+    background:rgba(34,197,94,.2); border:1px solid rgba(34,197,94,.4);
+    color:var(--green); font-family:var(--mono); font-size:9px; font-weight:700;
+    padding:2px 5px; border-radius:3px;
+  }
+
+  /* Grid helpers */
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .mt-4 { margin-top:16px; }
+  .mb-3 { margin-bottom:12px; }
+
+  /* Live ticker */
+  .live-ticker {
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px 16px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:16px;
+    overflow:hidden;
+  }
+  .ticker-label {
+    font-size:10px; font-weight:700; color:var(--red);
+    letter-spacing:1px; text-transform:uppercase;
+    border:1px solid var(--red); padding:2px 7px; border-radius:4px;
+    flex-shrink:0; animation:flash 1.5s infinite;
+  }
+  .ticker-text { font-size:12px; color:var(--muted2); font-family:var(--mono); overflow:hidden; white-space:nowrap; }
+
+  /* page header */
+  .page-header { margin-bottom:20px; }
+  .page-header h1 { font-size:20px; font-weight:700; color:#fff; }
+  .page-header p { font-size:13px; color:var(--muted2); margin-top:4px; }
+
+  /* Tab style violations header */
+  .violations-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .vcount-chip { background:var(--red-dim); border:1px solid rgba(255,59,59,.25); color:var(--red); font-family:var(--mono); font-size:12px; font-weight:700; padding:3px 10px; border-radius:5px; }
+  .spacer { flex:1; }
+
+  /* Camera info panel */
+  .cam-info-row {
+    display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:16px;
+  }
+  .cam-info-tile {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px 16px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .cam-info-icon { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .ci-blue { background:var(--accent-dim); color:var(--accent); }
+  .ci-green { background:var(--green-dim); color:var(--green); }
+  .ci-red { background:var(--red-dim); color:var(--red); }
+  .cam-info-icon svg { width:16px; height:16px; }
+  .cam-info-val { font-size:18px; font-weight:700; color:#fff; font-family:var(--mono); line-height:1; }
+  .cam-info-label { font-size:11px; color:var(--muted2); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* ─── PRINT STYLES ─── */
+  @media print {
+    body { background:#fff; color:#000; }
+    .sidebar, .topbar, .modal-overlay .modal-actions, .modal-overlay .modal-header { display:none; }
+    .challan-receipt { box-shadow:none; }
+  }
+
+  /* Car SVG helper */
+  .car-svg { position:absolute; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo-wrap">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <div class="name">RoadRakshak</div>
+      <div class="tagline">AI Enforcement</div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-section">
+      <div class="nav-label">Monitoring</div>
+      <div class="nav-item active" onclick="showPage('cameras')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="8" width="20" height="12" rx="2"/><path d="M22 10l-5-3v8l5-3z" fill="currentColor" stroke="none"/><circle cx="8" cy="14" r="2"/></svg>
+        Live Cameras
+      </div>
+      <div class="nav-item" onclick="showPage('violations')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Violations
+        <span class="nav-badge" id="violBadge">0</span>
+      </div>
+      <div class="nav-item" onclick="showPage('highrisk')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></svg>
+        High Risk Alerts
+        <span class="nav-badge" id="riskBadge">3</span>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Intelligence</div>
+      <div class="nav-item" onclick="showPage('violators')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Repeat Violators
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="system-status">
+      <div class="status-dot"></div>
+      <div>
+        <div style="font-weight:600;font-size:12px;color:var(--text)">System Online</div>
+        <div style="font-size:10px;color:var(--muted)">AI Model v2.4.1</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div>
+      <span class="topbar-title" id="pageTitle">Live Cameras</span>
+      <span class="topbar-sub" id="pageSubtitle">— 6 feeds active</span>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-time" id="clockDisplay">--:--:--</div>
+      <button class="btn btn-ghost" onclick="openSend(null)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Send Message
+      </button>
+      <button class="btn btn-primary" onclick="openChallan(null)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Create Challan
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════ PAGE: CAMERAS ══════════ -->
+  <div class="page active" id="page-cameras">
+    <div class="page-header">
+      <h1>Live Camera Network</h1>
+      <p>Real-time AI-annotated surveillance across 6 active junctions</p>
+    </div>
+
+    <div class="cam-info-row">
+      <div class="cam-info-tile">
+        <div class="cam-info-icon ci-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="8" width="20" height="12" rx="2"/><path d="M22 10l-5-3v8l5-3z" fill="currentColor" stroke="none"/></svg></div>
+        <div><div class="cam-info-val">6</div><div class="cam-info-label">Active Feeds</div></div>
+      </div>
+      <div class="cam-info-tile">
+        <div class="cam-info-icon ci-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <div><div class="cam-info-val">24/7</div><div class="cam-info-label">Monitoring Active</div></div>
+      </div>
+      <div class="cam-info-tile">
+        <div class="cam-info-icon ci-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div>
+        <div><div class="cam-info-val" id="detectedCount">0</div><div class="cam-info-label">Violations Today</div></div>
+      </div>
+    </div>
+
+    <div class="cam-grid">
+      <div class="cam-block" id="camBlock1"><canvas id="canvas1"></canvas><div class="cam-ui-layer" id="ui1"></div></div>
+      <div class="cam-block" id="camBlock2"><canvas id="canvas2"></canvas><div class="cam-ui-layer" id="ui2"></div></div>
+      <div class="cam-block" id="camBlock3"><canvas id="canvas3"></canvas><div class="cam-ui-layer" id="ui3"></div></div>
+      <div class="cam-block" id="camBlock4"><canvas id="canvas4"></canvas><div class="cam-ui-layer" id="ui4"></div></div>
+      <div class="cam-block" id="camBlock5"><canvas id="canvas5"></canvas><div class="cam-ui-layer" id="ui5"></div></div>
+      <div class="cam-block" id="camBlock6"><canvas id="canvas6"></canvas><div class="cam-ui-layer" id="ui6"></div></div>
+    </div>
+  </div>
+
+<style>
+.cam-block { position:relative; overflow:hidden; }
+.cam-block canvas { width:100%; height:100%; display:block; }
+.cam-ui-layer {
+  position:absolute; inset:0; pointer-events:none;
+  font-family:'JetBrains Mono',monospace;
+}
+.cam-rec-badge {
+  position:absolute; top:9px; right:9px;
+  display:flex; align-items:center; gap:4px;
+  background:rgba(0,0,0,.65); padding:3px 8px; border-radius:4px;
+  font-size:10px; color:#FF3B3B; font-weight:700;
+}
+.rec-dot2 { width:6px;height:6px;border-radius:50%;background:#FF3B3B;animation:pulse-dot 1s infinite; }
+.cam-ai-badge {
+  position:absolute; top:9px; left:9px;
+  background:rgba(0,194,255,.15); border:1px solid rgba(0,194,255,.35);
+  color:#00C2FF; font-size:9px; font-weight:700; padding:2px 7px; border-radius:4px;
+  letter-spacing:.5px; text-transform:uppercase;
+}
+.cam-alert-badge {
+  position:absolute; top:9px; left:9px;
+  background:#FF3B3B; color:#fff; font-size:9px; font-weight:700;
+  padding:3px 8px; border-radius:4px; animation:flash 1s infinite; letter-spacing:.4px;
+}
+.cam-footer {
+  position:absolute; bottom:0; left:0; right:0;
+  background:linear-gradient(to top,rgba(0,0,0,.75),transparent);
+  padding:18px 10px 8px;
+  display:flex; align-items:center; gap:8px;
+}
+.cam-id-badge {
+  background:rgba(0,0,0,.7); border:1px solid rgba(0,194,255,.3);
+  color:#00C2FF; font-size:10px; font-weight:700; padding:3px 7px; border-radius:4px;
+}
+.cam-loc-text { color:rgba(255,255,255,.6); font-size:10px; font-family:'Inter',sans-serif; }
+/* scanline */
+.cam-ui-layer::after {
+  content:''; position:absolute; left:0; right:0; height:35%;
+  background:linear-gradient(to bottom,transparent,rgba(0,194,255,.03),transparent);
+  animation:scanline2 4s linear infinite; pointer-events:none;
+}
+@keyframes scanline2 { 0%{top:-35%} 100%{top:110%} }
+</style>
+
+<script>
+// ══════════ CAMERA CANVAS ENGINE ══════════
+
+const CAM_CONFIG = [
+  {
+    id:1, label:'CAM-01', loc:'Hazratganj Crossing, LKO',
+    bg:['#0d1b2a','#162032','#1c2d44'], road:'#252525', divider:'#FFD700',
+    hasSignal:true, signalState:'RED',   // cam1: signal jump violation
+    violation:{ type:'SIGNAL JUMP', plate:'UP32 AK1234', conf:94, color:'#FF3B3B' },
+    cars:[
+      { x:30, y:0, w:46, h:20, color:'#3a7bd5', cap:'#2a6bc5', speed:0, plate:'UP32 AK1234', violator:true, lane:0 },
+      { x:160, y:0, w:42, h:19, color:'#e74c3c', cap:'#c0392b', speed:1.1, plate:'MH04 ZZ211', lane:0 },
+      { x:280, y:0, w:40, h:18, color:'#27ae60', cap:'#219a52', speed:0.8, lane:0 },
+    ]
+  },
+  {
+    id:2, label:'CAM-02', loc:'Charbagh Junction, LKO',
+    bg:['#0a1a10','#0f2218','#152d20'], road:'#202020', divider:'#fff',
+    hasSignal:false,
+    violation:{ type:'WRONG LANE', plate:'MH12 XY5566', conf:91, color:'#F5A623' },
+    cars:[
+      { x:20,  y:0, w:40, h:18, color:'#e67e22', cap:'#ca6f1e', speed:1.2, plate:'MH12 XY5566', violator:true, lane:0, wrongLane:true },
+      { x:170, y:0, w:38, h:17, color:'#1abc9c', cap:'#16a085', speed:0.9, lane:0 },
+      { x:60,  y:0, w:36, h:16, color:'#3498db', cap:'#2980b9', speed:1.0, lane:1 },
+      { x:240, y:0, w:40, h:18, color:'#9b59b6', cap:'#8e44ad', speed:1.1, lane:1 },
+    ]
+  },
+  {
+    id:3, label:'CAM-03', loc:'Alambagh Bus Stand, LKO',
+    bg:['#1a0505','#250a0a','#300d0d'], road:'#2a1a1a', divider:'#FFD700',
+    alert:true,
+    violation:{ type:'NO HELMET · TRIPLE RIDE', plate:'UP32 MM4477', conf:95, color:'#FF3B3B' },
+    cars:[
+      { x:70,  y:0, w:26, h:16, color:'#8e44ad', cap:'#7d3c98', speed:0.7, plate:'UP32 MM4477', violator:true, isBike:true, tripleRide:true, lane:0 },
+      { x:200, y:0, w:44, h:20, color:'#2471a3', cap:'#1f618d', speed:1.0, lane:0 },
+      { x:280, y:0, w:38, h:17, color:'#27ae60', cap:'#219a52', speed:1.3, lane:0 },
+    ]
+  },
+  {
+    id:4, label:'CAM-04', loc:'Gomti Nagar Crossing, LKO',
+    bg:['#0a0a1a','#10102a','#16163a'], road:'#222233', divider:'#aaa',
+    violation:{ type:'MOBILE USE', plate:'DL4C GH2233', conf:93, color:'#F5A623' },
+    cars:[
+      { x:90,  y:0, w:44, h:20, color:'#f39c12', cap:'#d68910', speed:0.6, plate:'DL4C GH2233', violator:true, mobileUse:true, lane:0 },
+      { x:230, y:0, w:40, h:18, color:'#16a085', cap:'#0e8075', speed:1.2, lane:0 },
+      { x:10,  y:0, w:38, h:17, color:'#e74c3c', cap:'#c0392b', speed:1.4, lane:1 },
+    ]
+  },
+  {
+    id:5, label:'CAM-05', loc:'Kapoorthala, LKO',
+    bg:['#0d180a','#122010','#172a14'], road:'#1a2a1a', divider:'#FFD700',
+    violation:{ type:'OVER SPEED 114km/h', plate:'UP32 ZZ0099', conf:98, color:'#FF3B3B' },
+    cars:[
+      { x:10,  y:0, w:44, h:20, color:'#2471a3', cap:'#1f618d', speed:3.2, plate:'UP32 ZZ0099', violator:true, overSpeed:true, lane:0 },
+      { x:200, y:0, w:38, h:17, color:'#a93226', cap:'#922b21', speed:0.9, lane:0 },
+      { x:120, y:0, w:42, h:18, color:'#117a65', cap:'#0e6655', speed:1.1, lane:0 },
+    ]
+  },
+  {
+    id:6, label:'CAM-06', loc:'Amausi Airport Rd, LKO',
+    bg:['#1a1200','#231900','#2b2000'], road:'#2a2a1a', divider:'#fff',
+    violation:{ type:'OVERLOADING', plate:'UP32 TK8811', conf:91, color:'#F5A623' },
+    cars:[
+      { x:40,  y:0, w:70, h:26, color:'#7f6000', cap:'#5d4e00', speed:0.5, plate:'UP32 TK8811', violator:true, truck:true, lane:0 },
+      { x:240, y:0, w:38, h:17, color:'#ca6f1e', cap:'#a04000', speed:1.0, lane:0 },
+      { x:150, y:0, w:40, h:18, color:'#1a5276', cap:'#154360', speed:0.85, lane:0 },
+    ]
+  }
+];
+
+// Perspective road heights
+const ROAD_Y_TOP = 0.52;  // road starts at 52% of canvas height (vanishing point)
+const ROAD_Y_BOT = 1.0;
+const LANE_COUNT = 2;
+
+function initCameras() {
+  CAM_CONFIG.forEach(cfg => {
+    const block = document.getElementById('camBlock'+cfg.id);
+    const canvas = document.getElementById('canvas'+cfg.id);
+    const ui = document.getElementById('ui'+cfg.id);
+
+    // Set canvas resolution to block pixel size
+    const rect = block.getBoundingClientRect();
+    const W = rect.width  || 320;
+    const H = rect.height || 200;
+    canvas.width  = W;
+    canvas.height = H;
+
+    // UI overlays
+    if(cfg.alert) {
+      ui.innerHTML = `
+        <div class="cam-alert-badge">⚠ VIOLATION DETECTED</div>
+        <div class="cam-rec-badge"><div class="rec-dot2"></div>REC</div>
+        <div class="cam-footer"><div class="cam-id-badge">${cfg.label}</div><div class="cam-loc-text">${cfg.loc}</div></div>`;
+    } else {
+      ui.innerHTML = `
+        <div class="cam-ai-badge">AI ACTIVE</div>
+        <div class="cam-rec-badge"><div class="rec-dot2"></div>REC</div>
+        <div class="cam-footer"><div class="cam-id-badge">${cfg.label}</div><div class="cam-loc-text">${cfg.loc}</div></div>`;
+    }
+
+    // Initialize car positions
+    cfg.cars.forEach((car, i) => {
+      car._x = car.x;
+      car._progress = 0.15 + i * 0.22 + Math.random()*0.1; // depth position 0=far 1=close
+      car._detected = false;
+      car._detTimer = 0;
+    });
+
+    // Start animation loop
+    animateCam(cfg, canvas);
+  });
+}
+
+function getPerspective(progress, W, H, lane, laneCount) {
+  // progress: 0=far/top, 1=near/bottom
+  const roadTop = H * ROAD_Y_TOP;
+  const roadBot = H * 1.02;
+  const y = roadTop + (roadBot - roadTop) * progress;
+  const scale = 0.18 + progress * 0.82;
+  // lane offset: center road, spread by perspective
+  const laneW = W * 0.72 * scale;
+  const roadCX = W * 0.5;
+  const laneX = roadCX - laneW/2 + (lane + 0.5) * (laneW / laneCount);
+  return { x: laneX, y, scale };
+}
+
+function drawCar(ctx, cfg, car, W, H, t) {
+  const lane = car.lane || 0;
+  const { x, y, scale } = getPerspective(car._progress, W, H, lane, LANE_COUNT);
+  const cw = (car.w || 44) * scale;
+  const ch = (car.h || 18) * scale;
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  if(car.truck) {
+    // Heavy truck with overload
+    drawTruck(ctx, cw, ch, scale, car, t);
+  } else if(car.isBike) {
+    drawBike(ctx, cw, ch, scale, car, t);
+  } else {
+    drawSedanCar(ctx, cw, ch, scale, car, t);
+  }
+
+  // License plate
+  if(car._progress > 0.55) {
+    const pw = cw * 0.6;
+    const ph = ch * 0.22;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(-pw/2, ch*0.28, pw, ph);
+    ctx.fillStyle = '#000';
+    ctx.font = `bold ${Math.max(5, ph*0.7)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(car.violator ? (car.plate||'') : '', 0, ch*0.28 + ph*0.78);
+  }
+
+  ctx.restore();
+
+  // AI detection box on violator vehicles
+  if(car.violator) {
+    car._detTimer = (car._detTimer||0) + 1;
+    const boxFlash = Math.sin(car._detTimer * 0.12) > -0.3;
+    const vcolor = cfg.violation.color;
+    if(boxFlash) {
+      const bx = x - cw/2 - 4*scale;
+      const by = y - ch - 4*scale;
+      const bw = cw + 8*scale;
+      const bh = ch + 8*scale;
+      ctx.save();
+      ctx.strokeStyle = vcolor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx, by, bw, bh);
+      // Corner ticks
+      const tk = Math.min(bw,bh)*0.18;
+      ctx.lineWidth = 2.5;
+      [[bx,by],[bx+bw,by],[bx,by+bh],[bx+bw,by+bh]].forEach(([cx2,cy2],i)=>{
+        const sx = i%2===0?1:-1, sy = i<2?1:-1;
+        ctx.beginPath(); ctx.moveTo(cx2+sx*tk,cy2); ctx.lineTo(cx2,cy2); ctx.lineTo(cx2,cy2+sy*tk); ctx.stroke();
+      });
+
+      // Label bubble
+      if(car._progress > 0.35) {
+        const lbl = cfg.violation.type;
+        const fs = Math.max(8, 10*scale);
+        ctx.font = `bold ${fs}px monospace`;
+        const tw = ctx.measureText(lbl).width + 8;
+        const lbx = bx; const lby = by - fs - 6;
+        ctx.fillStyle = vcolor;
+        ctx.fillRect(lbx, lby, tw, fs+4);
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'left';
+        ctx.fillText(lbl, lbx+4, lby+fs);
+
+        // Plate label
+        if(car.plate) {
+          const pl = car.plate + ' · ' + cfg.violation.conf + '%';
+          const fs2 = Math.max(7, 9*scale);
+          ctx.font = `bold ${fs2}px monospace`;
+          const tw2 = ctx.measureText(pl).width + 8;
+          ctx.fillStyle = 'rgba(0,0,0,0.75)';
+          ctx.fillRect(bx, by+bh+2, tw2, fs2+4);
+          ctx.fillStyle = '#00FF88';
+          ctx.fillText(pl, bx+4, by+bh+fs2+3);
+        }
+
+        // Violation reason callout arrow pointing to car
+        drawCallout(ctx, x, y - ch/2, vcolor, cfg.violation.type, scale);
+      }
+      ctx.restore();
+    }
+  }
+}
+
+function drawCallout(ctx, tx, ty, color, reason, scale) {
+  // Pulsing dot on violation point
+  const r = 5 * scale;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(tx, ty, r, 0, Math.PI*2);
+  ctx.fillStyle = color;
+  ctx.globalAlpha = 0.9;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Outer rings
+  for(let i=1;i<=2;i++){
+    ctx.beginPath();
+    ctx.arc(tx, ty, r + i*5*scale, 0, Math.PI*2);
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.4 / i;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawSedanCar(ctx, cw, ch, scale, car, t) {
+  // Body
+  ctx.fillStyle = car.color;
+  ctx.beginPath();
+  ctx.roundRect(-cw/2, -ch, cw, ch*0.72, 3*scale);
+  ctx.fill();
+
+  // Cabin
+  ctx.fillStyle = car.cap;
+  ctx.beginPath();
+  ctx.roundRect(-cw*0.32, -ch, cw*0.64, ch*0.52, 2*scale);
+  ctx.fill();
+
+  // Windshield
+  ctx.fillStyle = 'rgba(180,230,255,0.4)';
+  ctx.beginPath();
+  ctx.roundRect(-cw*0.26, -ch*0.95, cw*0.52, ch*0.4, 2*scale);
+  ctx.fill();
+
+  // Wheels
+  [[cw*0.34, -ch*0.08],[- cw*0.34, -ch*0.08]].forEach(([wx,wy])=>{
+    ctx.fillStyle = '#222';
+    ctx.beginPath(); ctx.ellipse(wx, wy, cw*0.13, ch*0.22, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#555';
+    ctx.beginPath(); ctx.ellipse(wx, wy, cw*0.07, ch*0.12, 0, 0, Math.PI*2); ctx.fill();
+  });
+
+  // Headlights
+  ctx.fillStyle = 'rgba(255,255,200,0.85)';
+  [[-cw*0.38,-ch*0.15],[cw*0.38,-ch*0.15]].forEach(([lx,ly])=>{
+    ctx.beginPath(); ctx.ellipse(lx, ly, cw*0.08, ch*0.08, 0, 0, Math.PI*2); ctx.fill();
+  });
+
+  // Mobile phone glow if mobileUse
+  if(car.mobileUse) {
+    const glowPulse = 0.5 + 0.5*Math.sin(t*0.15);
+    ctx.save();
+    ctx.fillStyle = `rgba(82,196,255,${0.4+0.4*glowPulse})`;
+    ctx.shadowBlur = 12*scale; ctx.shadowColor = '#52c4ff';
+    ctx.fillRect(-cw*0.06, -ch*0.85, cw*0.12, ch*0.28);
+    // Screen content lines
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillRect(-cw*0.04, -ch*0.82, cw*0.08, ch*0.04);
+    ctx.fillRect(-cw*0.04, -ch*0.76, cw*0.05, ch*0.04);
+    ctx.restore();
+    // REASON label
+    ctx.save();
+    ctx.fillStyle = '#F5A623';
+    ctx.font = `bold ${Math.max(6,8*scale)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('📱 IN USE', 0, -ch*1.12);
+    ctx.restore();
+  }
+}
+
+function drawBike(ctx, cw, ch, scale, car, t) {
+  const bw = cw; const bh = ch;
+  // Wheels
+  [[bw*0.3,-bh*0.15],[-bw*0.3,-bh*0.15]].forEach(([wx,wy])=>{
+    ctx.fillStyle='#222'; ctx.beginPath(); ctx.ellipse(wx,wy,bw*0.2,bh*0.38,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#555'; ctx.beginPath(); ctx.ellipse(wx,wy,bw*0.1,bh*0.19,0,0,Math.PI*2); ctx.fill();
+  });
+  // Frame
+  ctx.fillStyle=car.color;
+  ctx.beginPath(); ctx.roundRect(-bw*0.28,-bh*0.7,bw*0.56,bh*0.55,3*scale); ctx.fill();
+
+  // Triple riders (3 people)
+  const riders = car.tripleRide ? 3 : 1;
+  for(let r=0; r<riders; r++) {
+    const rx = (r-1)*bw*0.28;
+    const ry = -bh*(0.85 + r*0.05);
+    // Body
+    ctx.fillStyle = ['#e8d5b7','#c9a87c','#d4b896'][r];
+    ctx.beginPath(); ctx.ellipse(rx, ry, bw*0.12, bh*0.35, 0, 0, Math.PI*2); ctx.fill();
+    // Head (NO helmet — big X)
+    ctx.fillStyle = ['#e8d5b7','#c9a87c','#d4b896'][r];
+    ctx.beginPath(); ctx.ellipse(rx, ry-bh*0.38, bw*0.12, bh*0.18, 0, 0, Math.PI*2); ctx.fill();
+    // X = no helmet
+    ctx.save();
+    ctx.strokeStyle='#FF3B3B'; ctx.lineWidth=2*scale;
+    ctx.beginPath(); ctx.moveTo(rx-bw*0.1, ry-bh*0.52); ctx.lineTo(rx+bw*0.1, ry-bh*0.28); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(rx+bw*0.1, ry-bh*0.52); ctx.lineTo(rx-bw*0.1, ry-bh*0.28); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Reason label
+  if(car.tripleRide && scale > 0.4) {
+    ctx.save();
+    ctx.fillStyle='#FF3B3B';
+    ctx.font=`bold ${Math.max(6,8*scale)}px monospace`;
+    ctx.textAlign='center';
+    ctx.fillText('NO HELMET ×3', 0, -bh*1.3);
+    ctx.restore();
+  }
+}
+
+function drawTruck(ctx, cw, ch, scale, car, t) {
+  // Cab
+  ctx.fillStyle = car.color;
+  ctx.beginPath(); ctx.roundRect(-cw*0.5, -ch, cw*0.32, ch*0.85, 3*scale); ctx.fill();
+  // Windshield
+  ctx.fillStyle='rgba(160,220,255,0.35)';
+  ctx.beginPath(); ctx.roundRect(-cw*0.46,-ch*0.95,cw*0.24,ch*0.42,2*scale); ctx.fill();
+  // Cargo container (overloaded — bulging)
+  ctx.fillStyle = '#5d4e00';
+  ctx.beginPath(); ctx.roundRect(-cw*0.18,-ch*1.08,cw*0.7,ch*0.95,3*scale); ctx.fill();
+  // Overflow load on top (bulging box = overload indicator)
+  ctx.fillStyle='#8B6914';
+  ctx.beginPath(); ctx.roundRect(-cw*0.14,-ch*1.32,cw*0.62,ch*0.28,2*scale); ctx.fill();
+  ctx.fillStyle='rgba(245,166,35,0.6)';
+  ctx.beginPath(); ctx.roundRect(-cw*0.1,-ch*1.44,cw*0.54,ch*0.16,2*scale); ctx.fill();
+  // Overload label
+  if(scale>0.4){
+    ctx.save();
+    ctx.fillStyle='#F5A623';
+    ctx.font=`bold ${Math.max(6,8*scale)}px monospace`;
+    ctx.textAlign='center';
+    ctx.fillText('+6.4T OVERLOAD', 0, -ch*1.55);
+    ctx.restore();
+  }
+  // Wheels
+  [[-cw*0.38,-ch*0.08],[cw*0.08,-ch*0.08],[cw*0.32,-ch*0.08]].forEach(([wx,wy])=>{
+    ctx.fillStyle='#222'; ctx.beginPath(); ctx.ellipse(wx,wy,cw*0.1,ch*0.22,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#555'; ctx.beginPath(); ctx.ellipse(wx,wy,cw*0.055,ch*0.12,0,0,Math.PI*2); ctx.fill();
+  });
+}
+
+function drawRoad(ctx, cfg, W, H, t) {
+  // Sky / background gradient
+  const sky = ctx.createLinearGradient(0,0,0,H*ROAD_Y_TOP);
+  sky.addColorStop(0, cfg.bg[0]);
+  sky.addColorStop(0.6, cfg.bg[1]);
+  sky.addColorStop(1, cfg.bg[2]);
+  ctx.fillStyle = sky;
+  ctx.fillRect(0,0,W,H*ROAD_Y_TOP+4);
+
+  // Road surface with perspective
+  const roadTop = H * ROAD_Y_TOP;
+  const lw = W * 0.78;  // road width at bottom
+  const lh = 10;        // narrow top of road
+  ctx.fillStyle = cfg.road;
+  ctx.beginPath();
+  ctx.moveTo(W*0.5 - lh/2, roadTop);
+  ctx.lineTo(W*0.5 + lh/2, roadTop);
+  ctx.lineTo(W*0.5 + lw/2, H);
+  ctx.lineTo(W*0.5 - lw/2, H);
+  ctx.closePath();
+  ctx.fill();
+
+  // Kerb lines (edges)
+  [[W*0.5-lw/2, W*0.5-lh/2],[W*0.5+lw/2, W*0.5+lh/2]].forEach(([xBot,xTop])=>{
+    ctx.strokeStyle='#555'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(xTop,roadTop); ctx.lineTo(xBot,H); ctx.stroke();
+  });
+
+  // Lane divider (animated dash)
+  const dashLen = 30; const dashGap = 22;
+  const speed = 1.2;
+  const offset = (t * speed) % (dashLen + dashGap);
+  for(let prog = 0.05; prog < 1; prog += 0.08) {
+    const y1 = roadTop + (H - roadTop) * prog;
+    const y2 = roadTop + (H - roadTop) * Math.min(1, prog + 0.06);
+    ctx.strokeStyle = cfg.divider || '#FFD700';
+    ctx.lineWidth = 1.5 + prog*1.5;
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath(); ctx.moveTo(W*0.5, y1); ctx.lineTo(W*0.5, y2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Signal box for cams with signal
+  if(cfg.hasSignal) {
+    const sx = W*0.78; const sy = H*0.28;
+    // Pole
+    ctx.strokeStyle='#888'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(sx,sy+60); ctx.lineTo(sx,H*ROAD_Y_TOP); ctx.stroke();
+    // Box
+    ctx.fillStyle='#1a1a1a'; ctx.strokeStyle='#555'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.roundRect(sx-10,sy,20,52,4); ctx.fill(); ctx.stroke();
+    // Lights
+    [['#FF3B3B','#300','#300'],['#555','#F5A623','#300'],['#555','#555','#22C55E']].forEach(([c,cy,cg],i)=>{
+      const active = cfg.signalState==='RED'?i===0:cfg.signalState==='YELLOW'?i===1:i===2;
+      ctx.fillStyle = active ? [c,cy,cg][i] : '#333';
+      if(active){ ctx.shadowBlur=8; ctx.shadowColor=[c,cy,cg][i]; }
+      ctx.beginPath(); ctx.arc(sx, sy+9+i*17, 7, 0, Math.PI*2); ctx.fill();
+      ctx.shadowBlur=0;
+    });
+    // Red signal + car crossed = violation callout
+    if(cfg.signalState==='RED') {
+      ctx.save();
+      ctx.fillStyle='rgba(255,59,59,0.18)';
+      ctx.fillRect(W*0.5-lw*0.36, H*ROAD_Y_TOP, lw*0.72, 12);
+      ctx.strokeStyle='#FF3B3B'; ctx.lineWidth=1.5; ctx.setLineDash([6,4]);
+      ctx.strokeRect(W*0.5-lw*0.36, H*ROAD_Y_TOP, lw*0.72, 12);
+      ctx.setLineDash([]);
+      ctx.fillStyle='#FF3B3B'; ctx.font=`bold 9px monospace`; ctx.textAlign='center';
+      ctx.fillText('STOP LINE', W*0.5, H*ROAD_Y_TOP+9);
+      ctx.restore();
+    }
+  }
+}
+
+function drawHUD(ctx, cfg, W, H, t) {
+  // Top-left HUD data
+  ctx.save();
+  ctx.fillStyle='rgba(0,0,0,0.45)';
+  ctx.fillRect(0,0,W,22);
+  ctx.fillStyle='#00C2FF'; ctx.font='bold 9px monospace'; ctx.textAlign='left';
+  const now=new Date();
+  ctx.fillText(`${cfg.label}  ${now.toTimeString().slice(0,8)}  FPS:30  RES:1080p`, 8, 14);
+  // Scanning bar at top
+  const scanX = (t*3) % W;
+  const sg = ctx.createLinearGradient(scanX-20,0,scanX+20,0);
+  sg.addColorStop(0,'transparent'); sg.addColorStop(0.5,'rgba(0,194,255,0.5)'); sg.addColorStop(1,'transparent');
+  ctx.fillStyle=sg; ctx.fillRect(0,0,W,2);
+  ctx.restore();
+}
+
+function animateCam(cfg, canvas) {
+  const ctx = canvas.getContext('2d');
+  let t = 0;
+
+  function frame() {
+    t++;
+    const W = canvas.width; const H = canvas.height;
+
+    ctx.clearRect(0,0,W,H);
+    drawRoad(ctx, cfg, W, H, t);
+
+    // Sort cars by depth (farthest first)
+    const sorted = [...cfg.cars].sort((a,b) => a._progress - b._progress);
+
+    sorted.forEach(car => {
+      // Move car
+      if(car.violator && cfg.hasSignal && cfg.signalState==='RED') {
+        // Violator: crossed stop line — pause just past it then creep
+        car._progress += (car.speed||0.8) * 0.0008;
+      } else if(car.violator && car.overSpeed) {
+        car._progress += (car.speed||3.2) * 0.0025;
+      } else {
+        car._progress += (car.speed||1.0) * 0.0012;
+      }
+      if(car._progress > 1.12) car._progress = 0.05 + Math.random()*0.1;
+
+      drawCar(ctx, cfg, car, W, H, t);
+    });
+
+    drawHUD(ctx, cfg, W, H, t);
+
+    requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+// Wait for layout then init
+setTimeout(initCameras, 120);
+window.addEventListener('resize', ()=>{ setTimeout(initCameras,100); });
+</script>
+
+  <!-- ══════════ PAGE: VIOLATIONS ══════════ -->
+  <div class="page" id="page-violations">
+    <div class="page-header">
+      <h1>Traffic Violations</h1>
+      <p>Live feed of AI-detected violations — click any record to view details</p>
+    </div>
+
+    <div class="live-ticker">
+      <div class="ticker-label">● LIVE</div>
+      <div class="ticker-text" id="tickerText">AI engine scanning all 6 camera feeds — detecting violations in real-time...</div>
+    </div>
+
+    <div class="violations-header">
+      <div style="font-size:13px;color:var(--muted2);">Today's detections</div>
+      <div class="vcount-chip" id="vCountChip">0 violations</div>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost" style="font-size:12px;padding:5px 12px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        Export CSV
+      </button>
+    </div>
+
+    <!-- Column headers -->
+    <div style="display:flex;align-items:center;padding:6px 20px;gap:0;margin-bottom:4px;">
+      <div style="width:110px;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Challan ID</div>
+      <div style="width:130px;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Vehicle No.</div>
+      <div style="flex:1;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;padding:0 16px;">Violation</div>
+      <div style="width:80px;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Camera</div>
+      <div style="width:80px;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;text-align:right;">Time</div>
+      <div style="width:40px;"></div>
+    </div>
+
+    <div class="violation-list" id="violationList">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- ══════════ PAGE: HIGH RISK ══════════ -->
+  <div class="page" id="page-highrisk">
+    <div class="page-header">
+      <h1>High Risk Violation Alerts</h1>
+      <p>Critical incidents requiring immediate attention — AI confidence above threshold</p>
+    </div>
+
+    <div class="stats-row" style="grid-template-columns:repeat(3,1fr);">
+      <div class="stat-card red">
+        <div class="stat-label">Critical Alerts</div>
+        <div class="stat-value">3</div>
+        <div class="stat-delta" style="color:var(--red);">↑ 2 new this hour</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-label">High Priority</div>
+        <div class="stat-value">7</div>
+        <div class="stat-delta">↑ 4 today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Response Time</div>
+        <div class="stat-value">4.2m</div>
+        <div class="stat-delta">↓ 0.8 min improved</div>
+      </div>
+    </div>
+
+    <div class="risk-grid">
+
+      <!-- ALERT 1 — Critical: Wrong Way Driver -->
+      <div class="risk-card critical">
+        <div class="risk-header">
+          <div class="risk-sev-dot"></div>
+          <div class="risk-title">Wrong-Way Driver · High Speed</div>
+          <div class="risk-time">09:42:17</div>
+        </div>
+        <div class="risk-body">
+          <div class="risk-row">
+            <div class="risk-detail">
+              <div class="risk-location">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <div class="risk-location-text">
+                  <div class="place">Charbagh Flyover, Lucknow</div>
+                  <div class="detail">NH27 · Km 14.2 · Near Railway Overbridge</div>
+                </div>
+              </div>
+              <div class="risk-plate">UP32 ZZ0099</div>
+              <div class="risk-meta">
+                <div class="risk-meta-item"><div class="risk-meta-label">Speed</div><div class="risk-meta-value" style="color:var(--red);">114 km/h</div></div>
+                <div class="risk-meta-item"><div class="risk-meta-label">Camera</div><div class="risk-meta-value">CAM-02</div></div>
+                <div class="risk-meta-item"><div class="risk-meta-label">Direction</div><div class="risk-meta-value" style="color:var(--red);">WRONG WAY</div></div>
+                <div class="risk-meta-item"><div class="risk-meta-label">AI Confidence</div><div class="risk-meta-value" style="color:var(--green);">98.7%</div></div>
+              </div>
+              <div class="risk-actions">
+                <button class="btn btn-danger" style="font-size:11px;padding:6px 12px" onclick="openChallan({plate:'UP32 ZZ0099',type:'Wrong-Way + Over Speed',cam:'CAM-02',loc:'Charbagh Flyover'})">⚡ Issue Challan</button>
+                <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="openSend({plate:'UP32 ZZ0099'})">Send Alert</button>
+              </div>
+            </div>
+            <div class="radar-wrap">
+              <div class="radar-circle"></div>
+              <div class="radar-circle"></div>
+              <div class="radar-circle"></div>
+              <div class="radar-center"></div>
+            </div>
+          </div>
+          <div class="ai-photo-strip">
+            <div class="ai-photo"><div class="ai-photo-scene" style="background:linear-gradient(160deg,#1a0000,#2a0a0a);">
+              <svg width="80%" height="80%" viewBox="0 0 120 80"><rect x="20" y="40" width="80" height="25" rx="4" fill="#c0392b"/><rect x="25" y="30" width="70" height="14" rx="3" fill="#a93226"/><rect x="5" y="55" width="20" height="12" rx="6" fill="#555"/><rect x="95" y="55" width="20" height="12" rx="6" fill="#555"/><text x="25" y="52" fill="#FFD700" font-size="8" font-family="monospace">UP32 ZZ0099</text><rect x="0" y="0" width="120" height="80" fill="none" stroke="#FF3B3B" stroke-width="3"/></svg>
+            </div><div class="ai-label">FRONT PLATE</div></div>
+            <div class="ai-photo"><div class="ai-photo-scene" style="background:linear-gradient(160deg,#001a00,#0a2a0a);">
+              <svg width="100%" height="100%" viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="0" y="50" width="120" height="30" fill="#222"/><rect x="10" y="38" width="100" height="18" rx="3" fill="#c0392b"/><rect x="25" y="28" width="70" height="12" rx="2" fill="#a93226"/><rect x="50" y="58" width="20" height="6" rx="3" fill="#555"/><line x1="0" y1="50" x2="120" y2="50" stroke="#FFD700" stroke-width="2" stroke-dasharray="10,8"/><path d="M0 50 L30 38 L90 38 L120 50" fill="none" stroke="#FF3B3B" stroke-width="2" stroke-dasharray="4,4"/></svg>
+            </div><div class="ai-label">SCENE</div></div>
+            <div class="ai-photo"><div class="ai-photo-scene" style="background:linear-gradient(160deg,#00001a,#0a0a2a);">
+              <svg width="100%" height="100%" viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="30" y="20" width="60" height="44" rx="4" fill="#1a1a3a"/><rect x="38" y="26" width="44" height="26" rx="2" fill="#eee" opacity=".9"/><rect x="40" y="54" width="10" height="4" rx="2" fill="#555"/><rect x="70" y="54" width="10" height="4" rx="2" fill="#555"/><line x1="60" y1="20" x2="60" y2="14" stroke="#555" stroke-width="4"/><rect x="55" y="10" width="10" height="8" rx="1" fill="#555"/><text x="41" y="39" fill="#e74c3c" font-size="8" font-family="monospace">WRONG</text><text x="44" y="47" fill="#e74c3c" font-size="8" font-family="monospace">WAY</text></svg>
+            </div><div class="ai-label">DIRECTION</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALERT 2 — Critical: Triple Riding No Helmet -->
+      <div class="risk-card critical">
+        <div class="risk-header">
+          <div class="risk-sev-dot"></div>
+          <div class="risk-title">Triple Riding · No Helmet</div>
+          <div class="risk-time">10:18:44</div>
+        </div>
+        <div class="risk-body">
+          <div class="risk-row">
+            <div class="risk-detail">
+              <div class="risk-location">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <div class="risk-location-text">
+                  <div class="place">Alambagh Bus Stand, Lucknow</div>
+                  <div class="detail">Near APSRTC Depot · Signal #14B</div>
+                </div>
+              </div>
+              <div class="risk-plate">UP32 MM4477</div>
+              <div class="risk-meta">
+                <div class="risk-meta-item"><div class="risk-meta-label">Persons</div><div class="risk-meta-value" style="color:var(--red);">3 (Illegal)</div></div>
+                <div class="risk-meta-item"><div class="risk-meta-label">Camera</div><div class="risk-meta-value">CAM-03</div></div>
+                <div class="risk-meta-item"><div class="risk-meta-label">Helmets</div><div class="risk-meta-value" style="color:var(--red);">0/3</div></div>
+                <div class="risk-meta-item"><div class="risk-meta-label">AI Confidence</div><div class="risk-meta-value" style="color:var(--green);">95.2%</div></div>
+              </div>
+              <div class="risk-actions">
+                <button class="btn btn-danger" style="font-size:11px;padding:6px 12px" onclick="openChallan({plate:'UP32 MM4477',type:'Triple Riding + No Helmet',cam:'CAM-03',loc:'Alambagh Bus Stand'})">⚡ Issue Challan</button>
+                <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="openSend({plate:'UP32 MM4477'})">Send Alert</button>
+              </div>
+            </div>
+            <div class="radar-wrap">
+              <div class="radar-circle"></div>
+              <div class="radar-circle"></div>
+              <div class="radar-circle"></div>
+              <div class="radar-center"></div>
+            </div>
+          </div>
+          <div class="ai-photo-strip">
+            <div class="ai-photo"><div class="ai-photo-scene" style="background:linear-gradient(160deg,#1a1000,#2a1a00);">
+              <svg width="100%" height="100%" viewBox="0 0 120 80" preserveAspectRatio="none">
+                <!-- Bike with 3 persons -->
+                <ellipse cx="35" cy="68" rx="12" ry="12" fill="#555"/>
+                <ellipse cx="35" cy="68" rx="7" ry="7" fill="#333"/>
+                <ellipse cx="85" cy="68" rx="12" ry="12" fill="#555"/>
+                <ellipse cx="85" cy="68" rx="7" ry="7" fill="#333"/>
+                <rect x="30" y="50" width="60" height="20" rx="4" fill="#8e44ad"/>
+                <!-- 3 person silhouettes -->
+                <circle cx="45" cy="40" r="7" fill="#ddd"/>
+                <rect x="40" y="47" width="10" height="16" rx="2" fill="#ddd"/>
+                <circle cx="62" cy="38" r="7" fill="#ddd"/>
+                <rect x="57" y="45" width="10" height="18" rx="2" fill="#ddd"/>
+                <circle cx="79" cy="40" r="7" fill="#ddd"/>
+                <rect x="74" y="47" width="10" height="16" rx="2" fill="#ddd"/>
+                <!-- X over each head = no helmet -->
+                <line x1="41" y1="34" x2="49" y2="46" stroke="#FF3B3B" stroke-width="2"/>
+                <line x1="49" y1="34" x2="41" y2="46" stroke="#FF3B3B" stroke-width="2"/>
+                <line x1="58" y1="32" x2="66" y2="44" stroke="#FF3B3B" stroke-width="2"/>
+                <line x1="66" y1="32" x2="58" y2="44" stroke="#FF3B3B" stroke-width="2"/>
+                <line x1="75" y1="34" x2="83" y2="46" stroke="#FF3B3B" stroke-width="2"/>
+                <line x1="83" y1="34" x2="75" y2="46" stroke="#FF3B3B" stroke-width="2"/>
+                <text x="20" y="12" fill="#FF3B3B" font-size="7" font-family="monospace">NO HELMET ×3</text>
+              </svg>
+            </div><div class="ai-label">AI DETECTION</div></div>
+            <div class="ai-photo"><div class="ai-photo-scene" style="background:linear-gradient(160deg,#0d0014,#1a0028);">
+              <svg width="100%" height="100%" viewBox="0 0 120 80"><rect x="20" y="44" width="80" height="26" rx="4" fill="#8e44ad"/><rect x="24" y="36" width="72" height="12" rx="2" fill="#7d3c98"/><text x="26" y="46" fill="#FFD700" font-size="7" font-family="monospace">UP32 MM4477</text><rect x="5" y="60" width="18" height="10" rx="5" fill="#555"/><rect x="97" y="60" width="18" height="10" rx="5" fill="#555"/></svg>
+            </div><div class="ai-label">PLATE ID</div></div>
+            <div class="ai-photo"><div class="ai-photo-scene" style="background:linear-gradient(160deg,#001a0d,#002a14);">
+              <svg width="100%" height="100%" viewBox="0 0 120 80"><rect x="0" y="0" width="120" height="80" fill="none"/><text x="10" y="16" fill="#00C2FF" font-size="8" font-family="monospace">PERSON COUNT: 3</text><text x="10" y="30" fill="#FF3B3B" font-size="8" font-family="monospace">HELMETS: 0</text><text x="10" y="44" fill="#FF3B3B" font-size="8" font-family="monospace">RISK: CRITICAL</text><text x="10" y="58" fill="#22C55E" font-size="8" font-family="monospace">CONF: 95.2%</text><rect x="2" y="2" width="116" height="76" fill="none" stroke="#FF3B3B" stroke-width="1.5" stroke-dasharray="4,4"/></svg>
+            </div><div class="ai-label">AI ANALYSIS</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALERT 3 — High: Overloaded Commercial -->
+      <div class="risk-card high">
+        <div class="risk-header">
+          <div class="risk-sev-dot"></div>
+          <div class="risk-title">Overloaded Commercial Vehicle</div>
+          <div class="risk-time">10:54:02</div>
+        </div>
+        <div class="risk-body">
+          <div class="risk-row">
+            <div class="risk-detail">
+              <div class="risk-location">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <div class="risk-location-text">
+                  <div class="place">Kanpur Road, Lucknow</div>
+                  <div class="detail">Ring Road Intersection · Before Toll Plaza 3</div>
+                </div>
+              </div>
+              <div class="risk-plate">UP32 TK8811</div>
+              <div class="risk-meta">
+                <div class="risk-meta-item"><div class="risk-meta-label">Est. Load</div><div class="risk-meta-value" style="color:var(--amber);">18.4 Ton</div></div>
+                <div class="risk-meta-item"><div class="risk-meta-label">Camera</div><div class="risk-meta-value">CAM-05</div></div>
+                <div class="risk-meta-item"><div class="risk-meta-label">Excess</div><div class="risk-meta-value" style="color:var(--amber);">+6.4 Ton</div></div>
+                <div class="risk-meta-item"><div class="risk-meta-label">AI Confidence</div><div class="risk-meta-value" style="color:var(--green);">91.8%</div></div>
+              </div>
+              <div class="risk-actions">
+                <button class="btn btn-amber" style="font-size:11px;padding:6px 12px" onclick="openChallan({plate:'UP32 TK8811',type:'Overloading',cam:'CAM-05',loc:'Kanpur Road'})">Issue Challan</button>
+                <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="openSend({plate:'UP32 TK8811'})">Send Alert</button>
+              </div>
+            </div>
+            <div class="radar-wrap" style="--red:var(--amber)">
+              <div class="radar-circle" style="border-color:var(--amber)"></div>
+              <div class="radar-circle" style="border-color:var(--amber)"></div>
+              <div class="radar-circle" style="border-color:var(--amber)"></div>
+              <div class="radar-center" style="background:var(--amber);box-shadow:0 0 10px var(--amber)"></div>
+            </div>
+          </div>
+          <div class="ai-photo-strip">
+            <div class="ai-photo"><div class="ai-photo-scene" style="background:linear-gradient(160deg,#1a1200,#2a1e00);">
+              <svg width="100%" height="100%" viewBox="0 0 120 80" preserveAspectRatio="none">
+                <rect x="5" y="38" width="110" height="30" rx="4" fill="#7f6000"/>
+                <rect x="0" y="32" width="30" height="40" rx="2" fill="#5d4e00"/>
+                <rect x="10" y="22" width="22" height="12" rx="2" fill="#6d5a00"/>
+                <!-- Overload lines on top -->
+                <rect x="5" y="20" width="110" height="20" rx="3" fill="#8B6914" opacity=".7"/>
+                <rect x="8" y="14" width="108" height="10" rx="2" fill="#7d5c10" opacity=".6"/>
+                <rect x="12" y="8" width="100" height="10" rx="2" fill="#6b4f0e" opacity=".5"/>
+                <rect x="5" y="58" width="20" height="12" rx="6" fill="#333"/>
+                <rect x="95" y="58" width="20" height="12" rx="6" fill="#333"/>
+                <text x="8" y="72" fill="#F5A623" font-size="6" font-family="monospace">UP32 TK8811</text>
+                <text x="8" y="6" fill="#FF3B3B" font-size="7" font-family="monospace">OVERLOADED +6.4T</text>
+              </svg>
+            </div><div class="ai-label">VEHICLE</div></div>
+            <div class="ai-photo"><div class="ai-photo-scene" style="background:linear-gradient(160deg,#001510,#001a14);">
+              <svg width="100%" height="100%" viewBox="0 0 120 80"><text x="8" y="16" fill="#00C2FF" font-size="8" font-family="monospace">WEIGHT EST.</text><text x="8" y="30" fill="#F5A623" font-size="10" font-family="monospace" font-weight="bold">18.4 Ton</text><text x="8" y="46" fill="#FF3B3B" font-size="8" font-family="monospace">MAX: 12.0 Ton</text><text x="8" y="60" fill="#FF3B3B" font-size="8" font-family="monospace">EXCESS: 6.4T</text><rect x="8" y="64" width="96" height="6" rx="3" fill="#333"/><rect x="8" y="64" width="65" height="6" rx="3" fill="#F5A623"/></svg>
+            </div><div class="ai-label">LOAD ESTIMATE</div></div>
+            <div class="ai-photo"><div class="ai-photo-scene" style="background:linear-gradient(160deg,#140014,#200020);">
+              <svg width="100%" height="100%" viewBox="0 0 120 80"><rect x="0" y="0" width="120" height="80" fill="none" stroke="#F5A623" stroke-width="1.5" stroke-dasharray="4,4"/><text x="10" y="20" fill="#00C2FF" font-size="8" font-family="monospace">AXLE STRESS</text><rect x="10" y="26" width="100" height="6" rx="3" fill="#333"/><rect x="10" y="26" width="88" height="6" rx="3" fill="#F5A623"/><text x="10" y="44" fill="#00C2FF" font-size="8" font-family="monospace">SUSPENSION</text><rect x="10" y="50" width="100" height="6" rx="3" fill="#333"/><rect x="10" y="50" width="92" height="6" rx="3" fill="#FF3B3B"/><text x="10" y="70" fill="#F5A623" font-size="7" font-family="monospace">CONF: 91.8%</text></svg>
+            </div><div class="ai-label">STRESS ANALYSIS</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALERT 4 — High: Mobile Use -->
+      <div class="risk-card high">
+        <div class="risk-header">
+          <div class="risk-sev-dot"></div>
+          <div class="risk-title">Mobile Phone Use While Driving</div>
+          <div class="risk-time">11:03:28</div>
+        </div>
+        <div class="risk-body">
+          <div class="risk-row">
+            <div class="risk-detail">
+              <div class="risk-location">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <div class="risk-location-text">
+                  <div class="place">Gomti Nagar, Lucknow</div>
+                  <div class="detail">Viraj Khand, Near Sector 14 Turn</div>
+                </div>
+              </div>
+              <div class="risk-plate">DL4C GH2233</div>
+              <div class="risk-meta">
+                <div class="risk-meta-item"><div class="risk-meta-label">Duration</div><div class="risk-meta-value" style="color:var(--amber);">14 sec</div></div>
+                <div class="risk-meta-item"><div class="risk-meta-label">Camera</div><div class="risk-meta-value">CAM-04</div></div>
+                <div class="risk-meta-item"><div class="risk-meta-label">Speed</div><div class="risk-meta-value">62 km/h</div></div>
+                <div class="risk-meta-item"><div class="risk-meta-label">AI Confidence</div><div class="risk-meta-value" style="color:var(--green);">93.4%</div></div>
+              </div>
+              <div class="risk-actions">
+                <button class="btn btn-amber" style="font-size:11px;padding:6px 12px" onclick="openChallan({plate:'DL4C GH2233',type:'Mobile Phone Usage',cam:'CAM-04',loc:'Gomti Nagar'})">Issue Challan</button>
+                <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="openSend({plate:'DL4C GH2233'})">Send Alert</button>
+              </div>
+            </div>
+            <div class="radar-wrap">
+              <div class="radar-circle" style="border-color:var(--amber)"></div>
+              <div class="radar-circle" style="border-color:var(--amber)"></div>
+              <div class="radar-circle" style="border-color:var(--amber)"></div>
+              <div class="radar-center" style="background:var(--amber);box-shadow:0 0 10px var(--amber)"></div>
+            </div>
+          </div>
+          <div class="ai-photo-strip">
+            <div class="ai-photo"><div class="ai-photo-scene" style="background:linear-gradient(160deg,#00100a,#001a10);">
+              <svg width="100%" height="100%" viewBox="0 0 120 80" preserveAspectRatio="none">
+                <rect x="20" y="35" width="80" height="32" rx="6" fill="#1a5276"/>
+                <rect x="26" y="25" width="68" height="14" rx="3" fill="#154360"/>
+                <!-- Driver with phone -->
+                <circle cx="50" cy="20" r="9" fill="#e8d5b7"/>
+                <rect x="44" y="29" width="12" height="20" rx="2" fill="#c8b8a0"/>
+                <!-- Phone in hand -->
+                <rect x="56" y="22" width="7" height="12" rx="2" fill="#2c3e50"/>
+                <rect x="57" y="23" width="5" height="10" rx="1" fill="#5dade2"/>
+                <!-- hand holding phone -->
+                <rect x="54" y="28" width="10" height="5" rx="2" fill="#c8b8a0"/>
+                <text x="4" y="12" fill="#F5A623" font-size="7" font-family="monospace">PHONE DETECTED</text>
+                <rect x="44" y="10" width="24" height="32" rx="3" fill="none" stroke="#F5A623" stroke-width="1.5"/>
+              </svg>
+            </div><div class="ai-label">DRIVER ZONE</div></div>
+            <div class="ai-photo"><div class="ai-photo-scene" style="background:linear-gradient(160deg,#150000,#220000);">
+              <svg width="100%" height="100%" viewBox="0 0 120 80"><rect x="0" y="0" width="120" height="80" fill="none" stroke="#F5A623" stroke-width="1.5"/><text x="6" y="16" fill="#00C2FF" font-size="8" font-family="monospace">DL4C GH2233</text><text x="6" y="32" fill="#F5A623" font-size="8" font-family="monospace">PHONE: ACTIVE</text><text x="6" y="48" fill="#F5A623" font-size="8" font-family="monospace">TIME: 14 sec</text><text x="6" y="64" fill="#22C55E" font-size="8" font-family="monospace">CONF: 93.4%</text></svg>
+            </div><div class="ai-label">PLATE + LOG</div></div>
+            <div class="ai-photo"><div class="ai-photo-scene" style="background:linear-gradient(160deg,#000015,#000022);">
+              <svg width="100%" height="100%" viewBox="0 0 120 80"><rect x="30" y="18" width="60" height="46" rx="5" fill="#1a1a3a"/><rect x="36" y="24" width="48" height="32" rx="2" fill="#2980b9" opacity=".7"/><text x="38" y="44" fill="white" font-size="9" font-family="monospace">📱</text><text x="38" y="56" fill="white" font-size="7" font-family="monospace">IN USE</text><rect x="28" y="16" width="64" height="50" fill="none" stroke="#F5A623" stroke-width="1.5" stroke-dasharray="3,3"/><text x="6" y="12" fill="#F5A623" font-size="7" font-family="monospace">OBJECT CLASS: PHONE</text></svg>
+            </div><div class="ai-label">OBJECT DETECT</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════ PAGE: VIOLATORS RANKING ══════════ -->
+  <div class="page" id="page-violators">
+    <div class="page-header">
+      <h1>Repeat Violator Rankings</h1>
+      <p>AI-tracked habitual offenders — ranked by frequency of violations</p>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card red">
+        <div class="stat-label">Habitual Offenders</div>
+        <div class="stat-value">14</div>
+        <div class="stat-delta" style="color:var(--red);">5+ violations</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-label">Total Tracked</div>
+        <div class="stat-value">247</div>
+        <div class="stat-delta">Unique vehicles</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Violations</div>
+        <div class="stat-value">2.4</div>
+        <div class="stat-delta" style="color:var(--green);">Per vehicle</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Challans Issued</div>
+        <div class="stat-value">189</div>
+        <div class="stat-delta">76.5% recovery</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Violation Frequency Leaderboard
+      </div>
+      <table class="rank-table" id="rankTable">
+        <thead>
+          <tr>
+            <th style="width:50px">#</th>
+            <th>Vehicle No.</th>
+            <th>Owner (via VAHAN)</th>
+            <th>Most Common Violation</th>
+            <th>Cameras Flagged</th>
+            <th>Last Seen</th>
+            <th style="width:180px">Violation Count</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rankBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /.main -->
+</div><!-- /.shell -->
+
+
+<!-- ══════════ MODAL: CHALLAN ══════════ -->
+<div class="modal-overlay" id="challanModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📋 Traffic Challan — RoadRakshak</h2>
+      <div class="modal-close" onclick="closeChallan()">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="challan-receipt" id="challanContent">
+        <div class="challan-header">
+          <div class="govt">Government of Uttar Pradesh · Traffic Police</div>
+          <h3>TRAFFIC CHALLAN</h3>
+          <div class="sub">Issued under Motor Vehicles Act, 1988 · AI-Assisted Detection</div>
+        </div>
+        <div class="challan-no">
+          <span>Challan No: <strong id="challanNo">RRK-2024-00000</strong></span>
+          <span>Date: <strong id="challanDate">--</strong></span>
+          <div class="challan-stamp">UP<br>TRAFFIC<br>POLICE</div>
+        </div>
+        <div class="challan-row"><span class="label">Vehicle Number</span><span class="value" id="cPlate">—</span></div>
+        <div class="challan-row"><span class="label">Violation Type</span><span class="value" id="cVtype">—</span></div>
+        <div class="challan-row"><span class="label">Location</span><span class="value" id="cLoc">—</span></div>
+        <div class="challan-row"><span class="label">Camera ID</span><span class="value" id="cCam">—</span></div>
+        <div class="challan-row"><span class="label">Detection Time</span><span class="value" id="cTime">—</span></div>
+        <div class="challan-row"><span class="label">AI Confidence</span><span class="value" id="cConf">—</span></div>
+        <div class="challan-fine">
+          <div class="fine-label">Total Fine Amount</div>
+          <div class="fine-amount" id="cFine">₹ —</div>
+        </div>
+        <div style="font-size:9px;color:#888;text-align:center;margin-top:10px;">
+          Pay within 15 days at nearest traffic police post or via <strong>UP Traffic Portal</strong><br>
+          This challan is auto-generated and sealed by RoadRakshak AI System
+        </div>
+        <div class="challan-barcode">
+          <svg class="barcode-svg" viewBox="0 0 200 40" id="barcodeSvg"></svg>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="window.print()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print Challan
+        </button>
+        <button class="btn btn-ghost" onclick="openSend(null); closeChallan();">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Send to Owner
+        </button>
+        <button class="btn btn-ghost" onclick="closeChallan()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: SEND MESSAGE ══════════ -->
+<div class="modal-overlay" id="sendModal">
+  <div class="modal send-modal">
+    <div class="modal-header">
+      <h2>📤 Send Notification</h2>
+      <div class="modal-close" onclick="closeSend()">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Vehicle Number / Registered Owner</label>
+        <input class="form-input" id="sendPlate" value="" placeholder="e.g. UP32 AK1234">
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Notification Type</label>
+          <select class="form-select">
+            <option>Challan Issued</option>
+            <option>Violation Warning</option>
+            <option>Court Summons</option>
+            <option>Fine Reminder</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Channel</label>
+          <select class="form-select">
+            <option>SMS (Registered Mobile)</option>
+            <option>WhatsApp</option>
+            <option>Email</option>
+            <option>All Channels</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Message</label>
+        <textarea class="form-textarea" id="sendMsg">Dear Vehicle Owner, a traffic violation has been detected by RoadRakshak AI System. Please pay your challan within 15 days at the nearest traffic police post or via UP Traffic Portal to avoid further action.</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Attach Challan PDF</label>
+        <select class="form-select">
+          <option>Yes — attach auto-generated PDF</option>
+          <option>No — text only</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="sendMsg()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Send Now
+        </button>
+        <button class="btn btn-ghost" onclick="closeSend()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: VIOLATION DETAIL ══════════ -->
+<div class="modal-overlay" id="vdetailModal">
+  <div class="modal vdetail-modal">
+    <div class="modal-header">
+      <h2 id="vdTitle">Violation Details</h2>
+      <div class="modal-close" onclick="closeVdetail()">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="ai-id-grid" id="vdPhotos"></div>
+      <div class="detail-grid" id="vdGrid"></div>
+      <div class="photo-evidence">
+        <div class="photo-evidence-label">Evidence Photos</div>
+        <div class="photo-evidence-grid" id="vdEvidence"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="openChallanFromDetail()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Create Challan
+        </button>
+        <button class="btn btn-ghost" onclick="openSendFromDetail()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Send Message
+        </button>
+        <button class="btn btn-ghost" onclick="closeVdetail()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SEND SUCCESS TOAST ══════════ -->
+<div id="toast" style="display:none;position:fixed;bottom:28px;right:28px;background:var(--green);color:#000;font-weight:600;font-size:13px;padding:12px 20px;border-radius:10px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.5);transition:all .3s;">
+  ✓ Message sent successfully
+</div>
+
+<script>
+// ─── DATA ───
+const locations = [
+  'Hazratganj Crossing','Charbagh Junction','Alambagh Bus Stand',
+  'Gomti Nagar Crossing','Kapoorthala Rd','Amausi Airport Rd','Kalyanpur','Indira Nagar'
+];
+const violTypes = [
+  {label:'Signal Jump',cls:'red',fine:1000},
+  {label:'No Helmet',cls:'red',fine:500},
+  {label:'Over Speeding',cls:'red',fine:2000},
+  {label:'Wrong Lane',cls:'amber',fine:500},
+  {label:'Mobile Use',cls:'amber',fine:1000},
+  {label:'Triple Riding',cls:'red',fine:1000},
+  {label:'No Seatbelt',cls:'amber',fine:1000},
+  {label:'Overloading',cls:'red',fine:2000},
+  {label:'Drunk Driving',cls:'red',fine:10000},
+  {label:'No PUC',cls:'blue',fine:500},
+];
+const plates = [
+  'UP32 AK1234','MH12 XY5566','UP31 CE3344','DL8C AB1122',
+  'RJ14 GH7788','UP32 ZZ0099','UP32 MM4477','GJ01 TT9900',
+  'KA05 ZX3311','HR26 PP8877','UP32 BB9988','MP09 NN1199'
+];
+const cameras = ['CAM-01','CAM-02','CAM-03','CAM-04','CAM-05','CAM-06'];
+
+let violations = [];
+let violationCount = 0;
+let currentVDetail = null;
+
+// ─── CLOCK ───
+function updateClock(){
+  const now = new Date();
+  document.getElementById('clockDisplay').textContent =
+    now.toTimeString().slice(0,8) + ' IST';
+}
+setInterval(updateClock,1000); updateClock();
+
+// ─── NAV ───
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.currentTarget && event.currentTarget.classList.add('active');
+  // update title
+  const titles = {
+    cameras:['Live Cameras','— 6 feeds active'],
+    violations:['Violations Feed','— auto-detecting'],
+    highrisk:['High Risk Alerts','— 4 incidents'],
+    violators:['Repeat Violators','— ranked by frequency']
+  };
+  document.getElementById('pageTitle').textContent = titles[id]?.[0]||'';
+  document.getElementById('pageSubtitle').textContent = titles[id]?.[1]||'';
+}
+
+// Fix: nav clicks
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click',function(){
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// ─── VIOLATION GENERATOR ───
+function rnd(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+
+function generateViolation(){
+  const vtype = rnd(violTypes);
+  const plate = rnd(plates);
+  const cam = rnd(cameras);
+  const loc = rnd(locations);
+  const now = new Date();
+  const time = now.toTimeString().slice(0,8);
+  violationCount++;
+  const id = 'RRK-' + String(violationCount).padStart(5,'0');
+  const v = { id, plate, vtype, cam, loc, time, fine: vtype.fine, acc: (85+randInt(0,14))+'.'+randInt(0,9)+'%' };
+  violations.unshift(v);
+  renderViolations();
+  // update badges
+  document.getElementById('violBadge').textContent = violations.length;
+  document.getElementById('detectedCount').textContent = violations.length;
+  document.getElementById('vCountChip').textContent = violations.length + ' violations';
+  // ticker
+  const tickers = [
+    `New: ${plate} — ${vtype.label} detected at ${loc} [${cam}]`,
+    `Alert: ${vtype.label} by ${plate} near ${loc} — AI confidence ${v.acc}`,
+    `Violation logged: ${id} · ${plate} · ${cam} · ${time}`,
+  ];
+  document.getElementById('tickerText').textContent = rnd(tickers);
+}
+
+function renderViolations(){
+  const list = document.getElementById('violationList');
+  list.innerHTML = '';
+  violations.slice(0,40).forEach((v,i)=>{
+    const bar = document.createElement('div');
+    bar.className = 'violation-bar' + (i===0?' new':'');
+    bar.innerHTML = `
+      <div class="vbar-severity sev-${v.vtype.cls}"></div>
+      <div class="vbar-content">
+        <div class="vbar-id">${v.id}</div>
+        <div class="vbar-plate">${v.plate}</div>
+        <div class="vbar-type"><span class="vtype-badge ${v.vtype.cls}">${v.vtype.label}</span></div>
+        <div class="vbar-cam">${v.cam}</div>
+        <div class="vbar-time">${v.time}</div>
+        <div class="vbar-arrow">›</div>
+      </div>`;
+    bar.onclick = ()=>openVdetail(v);
+    list.appendChild(bar);
+    if(i===0) setTimeout(()=>bar.classList.remove('new'),2000);
+  });
+}
+
+// Auto-generate violations
+setInterval(()=>{
+  if(Math.random()<0.7) generateViolation();
+}, 2800);
+// seed 3 immediately
+for(let i=0;i<3;i++) generateViolation();
+
+// ─── CHALLAN MODAL ───
+let currentChallanData = null;
+function openChallan(data){
+  if(!data && currentVDetail) data = currentVDetail;
+  if(!data) data = { plate: rnd(plates), type: rnd(violTypes).label, cam: rnd(cameras), loc: rnd(locations) };
+  currentChallanData = data;
+  const now = new Date();
+  const challanId = 'RRK-' + now.getFullYear() + '-' + String(Math.floor(Math.random()*99999)).padStart(5,'0');
+  const fine = violTypes.find(v=>v.label===data.type)?.fine || 1000;
+  const acc = (88+Math.floor(Math.random()*11)) + '.' + Math.floor(Math.random()*9) + '%';
+  document.getElementById('challanNo').textContent = challanId;
+  document.getElementById('challanDate').textContent = now.toLocaleDateString('en-IN');
+  document.getElementById('cPlate').textContent = data.plate;
+  document.getElementById('cVtype').textContent = data.type;
+  document.getElementById('cLoc').textContent = data.loc || 'Lucknow';
+  document.getElementById('cCam').textContent = data.cam;
+  document.getElementById('cTime').textContent = now.toTimeString().slice(0,8);
+  document.getElementById('cConf').textContent = acc;
+  document.getElementById('cFine').textContent = '₹ ' + fine.toLocaleString('en-IN');
+  // Generate barcode lines
+  const svg = document.getElementById('barcodeSvg');
+  svg.innerHTML = '';
+  let x = 5;
+  while(x < 195){
+    const w = Math.random()<0.5?1:2;
+    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',x); rect.setAttribute('y','5');
+    rect.setAttribute('width',w); rect.setAttribute('height','30');
+    rect.setAttribute('fill','#1a1a2e');
+    svg.appendChild(rect);
+    x += w + (Math.random()<0.5?1:2);
+  }
+  document.getElementById('challanModal').classList.add('open');
+}
+function closeChallan(){ document.getElementById('challanModal').classList.remove('open'); }
+
+// ─── SEND MODAL ───
+function openSend(data){
+  if(data?.plate) document.getElementById('sendPlate').value = data.plate;
+  document.getElementById('sendModal').classList.add('open');
+}
+function closeSend(){ document.getElementById('sendModal').classList.remove('open'); }
+function sendMsg(){
+  closeSend();
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  setTimeout(()=>t.style.display='none', 3000);
+}
+
+// ─── VIOLATION DETAIL MODAL ───
+function openVdetail(v){
+  currentVDetail = {plate:v.plate, type:v.vtype.label, cam:v.cam, loc:v.loc};
+  document.getElementById('vdTitle').textContent = v.vtype.label + ' — ' + v.plate;
+  // AI Photo grid
+  const colors = ['#1a0000,#2a0a0a','#001a00,#0a2a0a','#00001a,#0a0a2a'];
+  document.getElementById('vdPhotos').innerHTML = ['FRONT VIEW','SIDE ANGLE','PLATE ZOOM'].map((label,i)=>`
+    <div class="ai-id-photo">
+      <svg width="100%" height="100%" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg" style="background:linear-gradient(160deg,${colors[i%3]})">
+        ${i===0?`<rect x="20" y="32" width="80" height="28" rx="4" fill="#2c3e50"/><rect x="26" y="24" width="68" height="12" rx="3" fill="#1a252f"/><text x="24" y="46" fill="#00C2FF" font-size="7" font-family="monospace">${v.plate}</text><rect x="5" y="50" width="18" height="10" rx="5" fill="#555"/><rect x="97" y="50" width="18" height="10" rx="5" fill="#555"/>`:
+          i===1?`<rect x="0" y="50" width="120" height="30" fill="#222"/><rect x="10" y="35" width="100" height="22" rx="3" fill="#2c3e50"/><rect x="5" y="55" width="20" height="10" rx="5" fill="#555"/><rect x="95" y="55" width="20" height="10" rx="5" fill="#555"/><line x1="0" y1="50" x2="120" y2="50" stroke="#FFD700" stroke-width="1.5"/>`:
+          `<rect x="25" y="25" width="70" height="30" rx="6" fill="#fff"/><text x="30" y="44" fill="#1a1a2e" font-size="11" font-family="monospace" font-weight="bold">${v.plate}</text><rect x="23" y="23" width="74" height="34" fill="none" stroke="#00C2FF" stroke-width="2"/>`}
+        <rect x="0" y="0" width="120" height="80" fill="none" stroke="#00FF88" stroke-width="1.5"/>
+      </svg>
+      <div class="ai-id-tag">${label}</div>
+      <div class="conf-chip">${v.acc}</div>
+    </div>`).join('');
+  // Detail grid
+  document.getElementById('vdGrid').innerHTML = `
+    <div class="detail-item"><div class="detail-label">Challan ID</div><div class="detail-value" style="font-family:var(--mono)">${v.id}</div></div>
+    <div class="detail-item"><div class="detail-label">Vehicle No.</div><div class="detail-value" style="color:var(--accent);font-family:var(--mono)">${v.plate}</div></div>
+    <div class="detail-item"><div class="detail-label">Violation</div><div class="detail-value"><span class="vtype-badge ${v.vtype.cls}">${v.vtype.label}</span></div></div>
+    <div class="detail-item"><div class="detail-label">Camera</div><div class="detail-value" style="font-family:var(--mono)">${v.cam}</div></div>
+    <div class="detail-item"><div class="detail-label">Location</div><div class="detail-value">${v.loc}, Lucknow</div></div>
+    <div class="detail-item"><div class="detail-label">Date & Time</div><div class="detail-value" style="font-family:var(--mono)">${new Date().toLocaleDateString('en-IN')} ${v.time}</div></div>
+    <div class="detail-item"><div class="detail-label">Fine Amount</div><div class="detail-value" style="color:var(--red);font-family:var(--mono);font-weight:700">₹ ${v.fine.toLocaleString('en-IN')}</div></div>
+    <div class="detail-item">
+      <div class="detail-label">AI Accuracy</div>
+      <div class="accuracy-bar-wrap">
+        <div class="accuracy-bar" style="width:${v.acc}"></div>
+        <div class="accuracy-text">${v.acc}</div>
+      </div>
+    </div>`;
+  // Evidence photos
+  const evColors = ['#0a0014','#000a14','#140a00'];
+  document.getElementById('vdEvidence').innerHTML = ['DETECTION FRAME','LICENSE PLATE','VIOLATION CLIP'].map((l,i)=>`
+    <div class="photo-ev">
+      <svg width="100%" height="100%" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg" style="background:linear-gradient(160deg,${evColors[i]},#000)">
+        <text x="6" y="14" fill="#00C2FF" font-size="7" font-family="monospace">${l}</text>
+        <text x="6" y="28" fill="#aaa" font-size="6" font-family="monospace">${v.plate}</text>
+        <text x="6" y="42" fill="#aaa" font-size="6" font-family="monospace">${v.time}</text>
+        <text x="6" y="56" fill="${i===0?'#FF3B3B':'#22C55E'}" font-size="6" font-family="monospace">${i===0?v.vtype.label:'EVIDENCE '+String(i+1)}</text>
+        <rect x="1" y="1" width="118" height="78" fill="none" stroke="${i===0?'#FF3B3B':'#00C2FF'}" stroke-width="1" stroke-dasharray="3,3"/>
+      </svg>
+    </div>`).join('');
+  document.getElementById('vdetailModal').classList.add('open');
+}
+function closeVdetail(){ document.getElementById('vdetailModal').classList.remove('open'); currentVDetail=null; }
+function openChallanFromDetail(){ closeVdetail(); openChallan(currentVDetail); }
+function openSendFromDetail(){ closeVdetail(); openSend(currentVDetail); }
+
+// ─── RANK TABLE ───
+const rankData = [
+  {plate:'UP32 AK1234',owner:'Ramesh Kumar',type:'Signal Jump',cams:'CAM-01, CAM-03',last:'Today 09:42',count:14},
+  {plate:'UP32 ZZ0099',owner:'Sunita Devi',type:'Wrong Way / Speed',cams:'CAM-02',last:'Today 09:42',count:12},
+  {plate:'MH12 XY5566',owner:'Vijay Sharma',type:'No Helmet',cams:'CAM-02, CAM-04',last:'Today 08:30',count:10},
+  {plate:'DL8C AB1122',owner:'Ankit Gupta',type:'Mobile Use',cams:'CAM-04',last:'Yesterday 14:15',count:9},
+  {plate:'UP32 MM4477',owner:'Pooja Singh',type:'Triple Riding',cams:'CAM-03',last:'Today 10:18',count:8},
+  {plate:'RJ14 GH7788',owner:'Manoj Verma',type:'Over Speeding',cams:'CAM-06',last:'Today 07:50',count:7},
+  {plate:'UP31 CE3344',owner:'Kavita Rao',type:'No PUC',cams:'CAM-05',last:'Today 11:05',count:7},
+  {plate:'GJ01 TT9900',owner:'Rahul Mishra',type:'No Seatbelt',cams:'CAM-01, CAM-06',last:'Yesterday 18:22',count:6},
+  {plate:'KA05 ZX3311',owner:'Deepak Nair',type:'Wrong Lane',cams:'CAM-04',last:'2 days ago',count:5},
+  {plate:'HR26 PP8877',owner:'Neha Agarwal',type:'Signal Jump',cams:'CAM-01',last:'2 days ago',count:5},
+];
+const maxCount = rankData[0].count;
+const rankColors = ['gold','silver','bronze'];
+document.getElementById('rankBody').innerHTML = rankData.map((r,i)=>`
+  <tr>
+    <td class="rank-no ${rankColors[i]||''}">${i<3?['🥇','🥈','🥉'][i]:i+1}</td>
+    <td class="rank-plate-cell">${r.plate}</td>
+    <td style="color:var(--text);font-size:13px">${r.owner}</td>
+    <td><span class="vtype-badge ${r.count>10?'red':r.count>7?'amber':'blue'}">${r.type}</span></td>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--muted2)">${r.cams}</td>
+    <td style="font-size:12px;color:var(--muted2)">${r.last}</td>
+    <td>
+      <div class="rank-bar-wrap">
+        <div class="rank-bar" style="width:${Math.round(r.count/maxCount*120)}px;background:${r.count>10?'var(--red)':r.count>7?'var(--amber)':'var(--accent)'}"></div>
+        <div class="rank-count">${r.count}</div>
+      </div>
+    </td>
+    <td><button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="openChallan({plate:'${r.plate}',type:'${r.type}',cam:'${r.cams.split(',')[0].trim()}',loc:'Lucknow'})">Challan</button></td>
+  </tr>`).join('');
+
+// ─── CLOSE MODALS ON OUTSIDE CLICK ───
+['challanModal','sendModal','vdetailModal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){
+    if(e.target===this) this.classList.remove('open');
+  });
+});
+</script>
+</body>
+</html>

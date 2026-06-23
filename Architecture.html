@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RoadRakshak AI — System Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+
+/* ========= RESET + BASE ========= */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0C1120;
+  --card:      #111827;
+  --card2:     #161F30;
+  --border:    #1E2A45;
+  --border2:   #253350;
+
+  --amber:     #F59E0B;
+  --amber-dim: rgba(245,158,11,0.12);
+  --cyan:      #22D3EE;
+  --cyan-dim:  rgba(34,211,238,0.10);
+  --emerald:   #10B981;
+  --emerald-dim:rgba(16,185,129,0.10);
+  --violet:    #A78BFA;
+  --violet-dim:rgba(167,139,250,0.10);
+  --red:       #F87171;
+  --red-dim:   rgba(248,113,113,0.10);
+
+  --text:      #E2E8F0;
+  --text-dim:  #94A3B8;
+  --text-muted:#4B5875;
+
+  --font-head: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+html { background: var(--bg); color: var(--text); font-family: var(--font-head); -webkit-font-smoothing: antialiased; }
+body { min-height: 100vh; }
+
+/* ========= PAGE SHELL ========= */
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 52px 48px 72px;
+}
+
+/* ========= HEADER ========= */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 48px;
+}
+
+.header-left { max-width: 620px; }
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  background: var(--cyan-dim);
+  border: 1px solid rgba(34,211,238,0.2);
+  padding: 5px 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.eyebrow::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+  animation: blink 1.8s ease infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.page-title {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.page-title span { color: var(--amber); }
+
+.page-subtitle {
+  font-size: 15px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  max-width: 500px;
+}
+
+.header-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.track-badge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--amber);
+  background: var(--amber-dim);
+  border: 1px solid rgba(245,158,11,0.25);
+  padding: 7px 14px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.stat-pair {
+  display: flex;
+  gap: 10px;
+}
+
+.stat-chip {
+  text-align: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+}
+
+.stat-chip .num {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+  display: block;
+}
+
+.stat-chip .lbl {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ========= DIVIDER ========= */
+.h-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border2) 20%, var(--border2) 80%, transparent);
+  margin: 0 0 44px;
+}
+
+/* ========= SECTION LABEL ========= */
+.sec-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sec-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ========= PIPELINE ========= */
+.pipeline { margin-bottom: 44px; }
+
+/* Row */
+.pipe-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  position: relative;
+}
+
+.pipe-row + .pipe-row { margin-top: 20px; }
+
+/* Node */
+.node {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  min-width: 0;
+}
+
+.node:hover {
+  z-index: 2;
+}
+
+.node.amber   { border-top: 2.5px solid var(--amber);   }
+.node.cyan    { border-top: 2.5px solid var(--cyan);    }
+.node.emerald { border-top: 2.5px solid var(--emerald); }
+.node.violet  { border-top: 2.5px solid var(--violet);  }
+.node.red     { border-top: 2.5px solid var(--red);     }
+
+.node:hover.amber   { border-color: var(--amber);   box-shadow: 0 0 0 1px var(--amber), 0 8px 32px rgba(245,158,11,0.15); }
+.node:hover.cyan    { border-color: var(--cyan);    box-shadow: 0 0 0 1px var(--cyan), 0 8px 32px rgba(34,211,238,0.12); }
+.node:hover.emerald { border-color: var(--emerald); box-shadow: 0 0 0 1px var(--emerald), 0 8px 32px rgba(16,185,129,0.12); }
+.node:hover.violet  { border-color: var(--violet);  box-shadow: 0 0 0 1px var(--violet), 0 8px 32px rgba(167,139,250,0.12); }
+.node:hover.red     { border-color: var(--red);     box-shadow: 0 0 0 1px var(--red), 0 8px 32px rgba(248,113,113,0.12); }
+
+.node-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+  display: inline-block;
+  margin-bottom: 9px;
+}
+
+.badge-amber   { background: var(--amber-dim);   color: var(--amber); }
+.badge-cyan    { background: var(--cyan-dim);    color: var(--cyan); }
+.badge-emerald { background: var(--emerald-dim); color: var(--emerald); }
+.badge-violet  { background: var(--violet-dim);  color: var(--violet); }
+.badge-red     { background: var(--red-dim);     color: var(--red); }
+
+.node-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.25;
+  margin-bottom: 6px;
+}
+
+.node-detail {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+
+.node-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  display: block;
+}
+
+/* icon background bubble */
+.node-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  float: right;
+  margin: 0 0 8px 10px;
+}
+
+.node-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.node-icon.amber   { background: var(--amber-dim); }
+.node-icon.cyan    { background: var(--cyan-dim); }
+.node-icon.emerald { background: var(--emerald-dim); }
+.node-icon.violet  { background: var(--violet-dim); }
+.node-icon.red     { background: var(--red-dim); }
+
+/* ---- Connector between nodes in a row ---- */
+.conn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.conn-line {
+  position: relative;
+  width: 100%;
+  height: 2px;
+  background: var(--border2);
+}
+
+.conn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: flowDot 2.4s linear infinite;
+}
+
+.conn.amber .conn-dot  { background: var(--amber); }
+.conn.cyan .conn-dot   { background: var(--cyan); }
+.conn.emerald .conn-dot { background: var(--emerald); }
+
+@keyframes flowDot {
+  0%   { left: -8px; opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+
+.conn-dot:nth-child(2) { animation-delay: 0.8s; }
+.conn-dot:nth-child(3) { animation-delay: 1.6s; }
+
+.conn-arrow {
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid var(--border2);
+}
+
+/* ---- Down connector between rows ---- */
+.down-conn {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 20px;
+  height: 20px;
+  position: relative;
+}
+
+.down-conn-wrap {
+  position: relative;
+  width: 3px;
+  height: 100%;
+}
+
+.down-conn-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, var(--border2), var(--amber));
+  border-radius: 2px;
+}
+
+.down-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: flowDown 2s linear infinite;
+  z-index: 1;
+}
+
+@keyframes flowDown {
+  0%   { top: -7px; opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* ========= SPECIAL: OUTPUT NODE (full-width, landmark) ========= */
+.output-node {
+  background: linear-gradient(135deg, #0F1E12 0%, #0A1830 60%);
+  border: 1px solid rgba(16,185,129,0.3);
+  border-radius: 16px;
+  padding: 26px 28px;
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+  margin-top: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.output-node::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: -1px; right: -1px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--emerald), var(--cyan));
+  border-radius: 16px 16px 0 0;
+}
+
+.output-node::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 220px;
+  background: radial-gradient(ellipse at right, rgba(16,185,129,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.output-col { flex: 1; min-width: 0; }
+
+.output-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.output-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--emerald-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.output-icon svg { width: 20px; height: 20px; color: var(--emerald); }
+
+.output-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.output-subtitle {
+  font-size: 12px;
+  color: var(--emerald);
+  font-family: var(--font-mono);
+}
+
+.output-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.output-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.output-item::before {
+  content: '→';
+  color: var(--emerald);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.output-divider {
+  width: 1px;
+  background: var(--border);
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+/* ========= AUGMENTATION SECTION ========= */
+.augment-bar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 44px;
+}
+
+.augment-bar-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--violet);
+  white-space: nowrap;
+  min-width: 130px;
+}
+
+.augment-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.aug-pill {
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.aug-pill .aug-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+}
+
+.aug-pill.night .aug-dot  { background: #818CF8; }
+.aug-pill.rain .aug-dot   { background: #38BDF8; }
+.aug-pill.fog .aug-dot    { background: #94A3B8; }
+.aug-pill.blur .aug-dot   { background: #A78BFA; }
+.aug-pill.glare .aug-dot  { background: var(--amber); }
+
+.augment-caption {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+
+/* ========= INNOVATION ROW ========= */
+.innov-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin-bottom: 44px;
+}
+
+.innov-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 14px 12px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.innov-card:hover {
+  border-color: var(--border2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+}
+
+.innov-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.innov-icon svg { width: 17px; height: 17px; }
+
+.innov-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.innov-desc {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ========= METRICS ROW ========= */
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 44px;
+}
+
+.metric-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.metric-card.amber::after  { background: var(--amber); }
+.metric-card.cyan::after   { background: var(--cyan); }
+.metric-card.emerald::after{ background: var(--emerald); }
+.metric-card.violet::after { background: var(--violet); }
+
+.metric-num {
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.metric-card.amber .metric-num  { color: var(--amber); }
+.metric-card.cyan .metric-num   { color: var(--cyan); }
+.metric-card.emerald .metric-num{ color: var(--emerald); }
+.metric-card.violet .metric-num { color: var(--violet); }
+
+.metric-label {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.metric-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  display: block;
+}
+
+/* Bar */
+.metric-bar-bg {
+  height: 3px;
+  background: var(--border2);
+  border-radius: 2px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.metric-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  animation: growBar 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  transform-origin: left;
+}
+
+@keyframes growBar {
+  from { width: 0%; }
+}
+
+/* ========= LEGEND ========= */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 22px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.legend-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.legend-items { display: flex; flex-wrap: wrap; gap: 14px; }
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.legend-dot {
+  width: 9px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* ========= FOOTER ========= */
+.page-footer {
+  margin-top: 56px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.footer-brand {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.footer-brand span { color: var(--amber); }
+
+.footer-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+/* ========= SVG ICONS INLINE ========= */
+svg { display: block; }
+
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ============ HEADER ============ -->
+  <div class="page-header">
+    <div class="header-left">
+      <div class="eyebrow">System Architecture</div>
+      <h1 class="page-title">RoadRakshak <span>AI</span></h1>
+      <p class="page-subtitle">End-to-end automated traffic violation detection — from raw camera frame to legal-grade evidence record, in under 3 seconds.</p>
+    </div>
+    <div class="header-meta">
+      <div class="track-badge">TRACK 1 · AUTOMATED PHOTO VIOLATION DETECTION</div>
+      <div class="stat-pair">
+        <div class="stat-chip">
+          <span class="num">7</span>
+          <span class="lbl">Pipeline stages</span>
+        </div>
+        <div class="stat-chip">
+          <span class="num">6</span>
+          <span class="lbl">Violation types</span>
+        </div>
+        <div class="stat-chip">
+          <span class="num">&lt;3s</span>
+          <span class="lbl">End-to-end latency</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="h-rule"></div>
+
+  <!-- ============ ROW 1: INPUT + PREPROCESSING ============ -->
+  <div class="sec-label">Stage 1–3 · Input &amp; Preprocessing</div>
+
+  <div class="pipeline">
+    <div class="pipe-row">
+
+      <!-- Node 1: Camera Feed -->
+      <div class="node amber">
+        <div class="node-icon amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--amber)"><path d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.89L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="node-badge badge-amber">01 · Input</span>
+        <div class="node-title">Camera Feed Input</div>
+        <div class="node-detail">Static images or live video frame streams from CCTV &amp; ANPR cameras. Supports RTSP streams and image uploads.</div>
+        <span class="node-tag">→ RTSP · JPEG · H.264</span>
+      </div>
+
+      <div class="conn amber">
+        <div class="conn-line">
+          <div class="conn-dot"></div>
+          <div class="conn-dot"></div>
+          <div class="conn-dot"></div>
+          <div class="conn-arrow"></div>
+        </div>
+      </div>
+
+      <!-- Node 2: Quality Check -->
+      <div class="node cyan">
+        <div class="node-icon cyan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--cyan)"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="node-badge badge-cyan">02 · Pre-filter</span>
+        <div class="node-title">Quality Assessment</div>
+        <div class="node-detail">Scores each frame for brightness, blur severity, rain-streak density, and saturation before committing compute resources.</div>
+        <span class="node-tag">→ Laplacian variance · Histogram analysis</span>
+      </div>
+
+      <div class="conn cyan">
+        <div class="conn-line">
+          <div class="conn-dot"></div>
+          <div class="conn-dot"></div>
+          <div class="conn-dot"></div>
+          <div class="conn-arrow" style="border-left-color:var(--border2)"></div>
+        </div>
+      </div>
+
+      <!-- Node 3: Preprocessing -->
+      <div class="node cyan">
+        <div class="node-icon cyan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--cyan)"><path d="M12 3v1m0 16v1M4.22 4.22l.707.707m12.02 12.02l.707.707M3 12h1m16 0h1M4.927 19.073l.707-.707M18.364 5.636l.707-.707" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="node-badge badge-cyan">03 · Enhance</span>
+        <div class="node-title">Adaptive Preprocessing</div>
+        <div class="node-detail">CLAHE for low-light enhancement · Dark-channel-prior dehazing for fog/rain · Wiener deconvolution for motion blur.</div>
+        <span class="node-tag">→ OpenCV · Albumentations</span>
+      </div>
+
+    </div><!-- /pipe-row 1 -->
+
+    <!-- Down connector -->
+    <div style="display:flex;justify-content:flex-end;padding:0 0 0 0;margin:0 18px;">
+      <div style="position:relative;width:2px;height:20px;background:linear-gradient(to bottom,var(--border2),var(--amber));border-radius:2px;">
+        <div class="down-dot"></div>
+      </div>
+    </div>
+
+    <!-- ============ ROW 2: DETECTION + CLASSIFICATION + OCR ============ -->
+    <div class="sec-label" style="margin-top:4px;">Stage 4–6 · Detection &amp; Classification</div>
+
+    <div class="pipe-row">
+
+      <!-- Node 4: YOLOv8 Detection -->
+      <div class="node amber">
+        <div class="node-icon amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--amber)"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18" stroke-linecap="round"/></svg>
+        </div>
+        <span class="node-badge badge-amber">04 · Detect</span>
+        <div class="node-title">YOLOv8 Detection</div>
+        <div class="node-detail">Fine-tuned on Indian traffic imagery. Localizes persons, vehicles, two-wheelers, helmets, and heads in a single forward pass.</div>
+        <span class="node-tag">→ YOLOv8s · COCO pretrain · IDD fine-tune</span>
+      </div>
+
+      <div class="conn amber">
+        <div class="conn-line">
+          <div class="conn-dot"></div>
+          <div class="conn-dot"></div>
+          <div class="conn-dot"></div>
+          <div class="conn-arrow"></div>
+        </div>
+      </div>
+
+      <!-- Node 5: Violation Classifier -->
+      <div class="node red">
+        <div class="node-icon red">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--red)"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke-linejoin="round" stroke-linecap="round"/></svg>
+        </div>
+        <span class="node-badge badge-red">05 · Classify</span>
+        <div class="node-title">Violation Classifier</div>
+        <div class="node-detail">Two-stage: crops detected regions, then runs focused classifier. Assigns violation type, confidence score, and severity rank.</div>
+        <span class="node-tag">→ Helmet · Triple riding · Red-light · Seatbelt</span>
+      </div>
+
+      <div class="conn emerald">
+        <div class="conn-line">
+          <div class="conn-dot" style="animation-delay:0.4s"></div>
+          <div class="conn-dot" style="animation-delay:1.2s"></div>
+          <div class="conn-dot" style="animation-delay:2s"></div>
+          <div class="conn-arrow" style="border-left-color:var(--border2)"></div>
+        </div>
+      </div>
+
+      <!-- Node 6: Plate OCR -->
+      <div class="node cyan">
+        <div class="node-icon cyan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--cyan)"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M7 11h2m2 0h2m2 0h1" stroke-linecap="round"/><path d="M7 14h4" stroke-linecap="round"/></svg>
+        </div>
+        <span class="node-badge badge-cyan">06 · Identify</span>
+        <div class="node-title">Plate Detection + OCR</div>
+        <div class="node-detail">Dedicated YOLOv8 plate-head detects plate region. EasyOCR/PaddleOCR extracts registration text with confidence gating.</div>
+        <span class="node-tag">→ EasyOCR · PaddleOCR · IND plate format</span>
+      </div>
+
+    </div><!-- /pipe-row 2 -->
+  </div><!-- /pipeline -->
+
+  <!-- ============ OUTPUT NODE (full-width) ============ -->
+  <div class="sec-label">Stage 7 · Evidence &amp; Action</div>
+
+  <div class="output-node">
+
+    <!-- Evidence generation -->
+    <div class="output-col">
+      <div class="output-head">
+        <div class="output-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <div class="output-title">Evidence Generation</div>
+          <div class="output-subtitle">07 · DOCUMENT</div>
+        </div>
+      </div>
+      <div class="output-items">
+        <div class="output-item">Annotated image: bounding boxes, violation label, confidence score</div>
+        <div class="output-item">Structured evidence record: plate number, timestamp, location, camera ID</div>
+        <div class="output-item">Grad-CAM overlay showing the exact region that triggered the flag</div>
+      </div>
+    </div>
+
+    <div class="output-divider"></div>
+
+    <!-- Analytics dashboard -->
+    <div class="output-col">
+      <div class="output-head">
+        <div class="output-icon" style="background:var(--cyan-dim)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--cyan)"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linejoin="round" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <div class="output-title">Analytics Dashboard</div>
+          <div class="output-subtitle" style="color:var(--cyan)">Live monitoring</div>
+        </div>
+      </div>
+      <div class="output-items">
+        <div class="output-item">Violation heatmap: frequency by location and time-of-day</div>
+        <div class="output-item">Repeat-offender tracking: cross-references plate history, flags habitual violators</div>
+        <div class="output-item">Searchable evidence log with exportable records</div>
+      </div>
+    </div>
+
+    <div class="output-divider"></div>
+
+    <!-- Enforcement action -->
+    <div class="output-col">
+      <div class="output-head">
+        <div class="output-icon" style="background:rgba(245,158,11,0.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--amber)"><path d="M21 3L11 13M21 3l-6.5 17.5-3.5-8-8-3.5L21 3z" stroke-linejoin="round" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <div class="output-title">Enforcement Action</div>
+          <div class="output-subtitle" style="color:var(--amber)">Real-time response</div>
+        </div>
+      </div>
+      <div class="output-items">
+        <div class="output-item">Severity-ranked alert queue: most dangerous violations surfaced first</div>
+        <div class="output-item">Auto-challan generation: printable PDF with photo evidence + QR code</div>
+        <div class="output-item">Instant officer alert via SMS/WhatsApp (Twilio API)</div>
+      </div>
+    </div>
+
+  </div><!-- /output-node -->
+
+  <!-- ============ AUGMENTATION BAR ============ -->
+  <div class="h-rule" style="margin-top:44px;"></div>
+  <div class="sec-label">Robustness · Adverse-Condition Training</div>
+
+  <div class="augment-bar">
+    <span class="augment-bar-label">Training augmentation</span>
+    <div class="augment-pills">
+      <div class="aug-pill night"><span class="aug-dot"></span> Night / Low-light</div>
+      <div class="aug-pill rain"><span class="aug-dot"></span> Rain &amp; wet lens</div>
+      <div class="aug-pill fog"><span class="aug-dot"></span> Fog &amp; haze</div>
+      <div class="aug-pill blur"><span class="aug-dot"></span> Motion blur</div>
+      <div class="aug-pill glare"><span class="aug-dot"></span> Shadow &amp; sun glare</div>
+    </div>
+    <span class="augment-caption">Albumentations · 5× augmentation pipeline</span>
+  </div>
+
+  <!-- ============ INNOVATION ROW ============ -->
+  <div class="sec-label" style="margin-top:36px;">Key Innovations · Beyond Standard Detection</div>
+
+  <div class="innov-row">
+
+    <div class="innov-card">
+      <div class="innov-icon" style="background:var(--amber-dim)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--amber)"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="innov-title">Repeat Offender Memory</div>
+      <div class="innov-desc">Plates cross-referenced against violation history. Habitual offenders flagged automatically.</div>
+    </div>
+
+    <div class="innov-card">
+      <div class="innov-icon" style="background:var(--red-dim)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--red)"><path d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="innov-title">Risk-Ranked Priority</div>
+      <div class="innov-desc">Violation severity scores surface the most dangerous cases first for officers.</div>
+    </div>
+
+    <div class="innov-card">
+      <div class="innov-icon" style="background:rgba(52,211,153,0.1)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:#34D399"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="innov-title">Instant Officer Ping</div>
+      <div class="innov-desc">High-severity violations push real-time SMS/WhatsApp alerts via Twilio to nearest officer.</div>
+    </div>
+
+    <div class="innov-card">
+      <div class="innov-icon" style="background:var(--violet-dim)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--violet)"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linejoin="round"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="innov-title">Explainable Flags</div>
+      <div class="innov-desc">Grad-CAM overlays show exactly which region triggered each violation detection.</div>
+    </div>
+
+    <div class="innov-card">
+      <div class="innov-icon" style="background:var(--cyan-dim)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--cyan)"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="innov-title">Fail-safe Evidence</div>
+      <div class="innov-desc">Low-confidence reads routed to manual review — never silently logged as confirmed.</div>
+    </div>
+
+    <div class="innov-card">
+      <div class="innov-icon" style="background:rgba(99,102,241,0.12)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:#818CF8"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="innov-title">Built for the Dark</div>
+      <div class="innov-desc">Trained on synthetic night, rain, fog &amp; blur — robustness is a design goal, not an afterthought.</div>
+    </div>
+
+  </div><!-- /innov-row -->
+
+  <!-- ============ PERFORMANCE METRICS ============ -->
+  <div class="sec-label">Target Performance · Validated on Adverse-Condition Sets</div>
+
+  <div class="metrics-row">
+    <div class="metric-card amber">
+      <span class="metric-num">90%</span>
+      <div class="metric-label">Helmet non-compliance precision</div>
+      <span class="metric-sub">Precision · mAP@0.5 &ge; 0.88</span>
+      <div class="metric-bar-bg">
+        <div class="metric-bar-fill" style="width:90%;background:var(--amber)"></div>
+      </div>
+    </div>
+    <div class="metric-card red">
+      <span class="metric-num" style="color:var(--red)">88%</span>
+      <div class="metric-label">Triple-riding recall</div>
+      <span class="metric-sub">Recall · F1 &ge; 0.86</span>
+      <div class="metric-bar-bg">
+        <div class="metric-bar-fill" style="width:88%;background:var(--red)"></div>
+      </div>
+    </div>
+    <div class="metric-card emerald">
+      <span class="metric-num">89%</span>
+      <div class="metric-label">Red-light violation mAP@0.5</div>
+      <span class="metric-sub">Recall &ge; 0.85 · F1 &ge; 0.87</span>
+      <div class="metric-bar-bg">
+        <div class="metric-bar-fill" style="width:89%;background:var(--emerald)"></div>
+      </div>
+    </div>
+    <div class="metric-card cyan">
+      <span class="metric-num">85%</span>
+      <div class="metric-label">License plate OCR accuracy</div>
+      <span class="metric-sub">IND format · confidence gating</span>
+      <div class="metric-bar-bg">
+        <div class="metric-bar-fill" style="width:85%;background:var(--cyan)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ LEGEND ============ -->
+  <div class="legend">
+    <span class="legend-label">Legend</span>
+    <div class="legend-items">
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--amber)"></div>
+        Input &amp; detection stages
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--cyan)"></div>
+        Preprocessing &amp; OCR stages
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--red)"></div>
+        Classification &amp; violation analysis
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--emerald)"></div>
+        Evidence &amp; output
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--violet)"></div>
+        Augmentation layer
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:linear-gradient(90deg,var(--amber),var(--emerald))"></div>
+        Animated data flow
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FOOTER ============ -->
+  <div class="page-footer">
+    <div class="footer-brand">RoadRakshak <span>AI</span></div>
+    <div class="footer-meta">TRACK 1 · AUTOMATED PHOTO VIOLATION DETECTION · SYSTEM ARCHITECTURE v1.0</div>
+  </div>
+
+</div><!-- /page -->
+
+</body>
+</html>
