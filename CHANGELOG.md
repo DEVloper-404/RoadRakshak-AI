@@ -13,3 +13,6 @@ All notable changes to this project will be documented in this file.
 - **UI Integration**: Added `CAM-07` to `demo_data.json` and wired `index.html` to consume live WebSockets frames and autonomous violation events in real time.
 
 - **Documentation**: Added `RR2/README.md` detailing how to start the Node.js server, open the dashboard, and broadcast the WebSocket camera feed from a mobile phone.
+
+- **Edge Model Environment**: Created a fully isolated Python `venv` inside `RR2/model` and added `requirements.txt` (YOLO, OpenCV, EasyOCR, requests).
+- **Video Processor Pipeline**: Built `process_video.py`, a functional Python edge script that processes a local video file, extracts image evidence, bundles the JSON payload, and POSTs it directly to the Node.js dashboard endpoint as `multipart/form-data`.
