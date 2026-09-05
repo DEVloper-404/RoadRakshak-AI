@@ -284,7 +284,19 @@ tbody tr:hover td{background:#161e2c}
 <div class=mask id=mask><div class=modal id=modal></div></div>
 <div id=toast></div>
 
+<script src="/socket.io/socket.io.js"></script>
 <script>
+const socket = typeof io !== 'undefined' ? io() : null;
+if (socket) {
+  socket.on('live_stream', frameData => {
+    document.querySelectorAll('.live-feed-target').forEach(img => {
+      img.src = frameData;
+    });
+  });
+  socket.on('new_violation', v => {
+    fire(v);
+  });
+}
 const S=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const money=n=>'₹'+Number(n||0).toLocaleString('en-IN');
@@ -397,6 +409,11 @@ function panelHTML(i,c){
   if(!c) return '';
   const opts=DATA.cameras.map((x,ix)=>
     `<option value="${ix}"${x.id===c.id?' selected':''}>${esc(x.id)}</option>`).join('');
+    
+  let mediaHtml = c.is_live_stream ? 
+    `<img id="liveStreamImg${i}" src="" alt="Awaiting Stream..." style="width:100%;height:100%;object-fit:cover;display:block;">` : 
+    `<video id="v${i}" src="${esc(c.video)}" autoplay muted loop playsinline></video>`;
+
   return `<div class=cam id="cam${i}">
     <div class=cam-hd>
       <select onchange="swap(${i},this.value)">${opts}</select>
@@ -404,7 +421,7 @@ function panelHTML(i,c){
       <span class=tag>ONLINE</span>
     </div>
     <div class=vidwrap>
-      <video id="v${i}" src="${esc(c.video)}" autoplay muted loop playsinline></video>
+      ${mediaHtml}
       <div class=scan></div>
       <div class=hud>
         <span class=t id="ht${i}">${esc(c.id)}</span>
@@ -413,10 +430,17 @@ function panelHTML(i,c){
     </div></div>`;
 }
 function wire(i){
+  const cam=DATA.cameras[PANELS[i]]; if(!cam) return;
+  if(cam.is_live_stream) {
+    S('ht'+i).textContent=`${cam.id}  LIVE`;
+    // Attach a class or attribute so global socket handler can find it
+    const img = S(`liveStreamImg${i}`);
+    if (img) img.classList.add('live-feed-target');
+    return;
+  }
   const v=S('v'+i); if(!v) return;
   let last=0;
   v.addEventListener('timeupdate',()=>{
-    const cam=DATA.cameras[PANELS[i]]; if(!cam) return;
     const t=v.currentTime;
     if(t<last-0.4){ SEEN.forEach(k=>{ if(k.startsWith(cam.id+'|')) SEEN.delete(k); }); }
     last=t;

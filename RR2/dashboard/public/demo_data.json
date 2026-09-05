@@ -53,6 +53,12 @@
       "duration": 26.0,
       "source_video": "Expo.MOV",
       "captured_at": "2026-08-17T13:25:35+05:30"
+    },
+    {
+      "id": "CAM-07",
+      "location": "Live Phone Stream",
+      "city": "Demo Network",
+      "is_live_stream": true
     }
   ],
   "city": "Greater Noida",

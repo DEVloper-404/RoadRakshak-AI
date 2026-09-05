@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RR2 Live Phone Streamer</title>
+  <style>
+    body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+    video { width: 100%; max-height: 80vh; background: #222; object-fit: cover; }
+    .controls { padding: 20px; display: flex; gap: 15px; }
+    button { padding: 10px 20px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+    .start { background: #3ddc97; color: #000; }
+    .stop { background: #ff4d5a; color: #fff; }
+    #status { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 5px; font-size: 12px; }
+    .recording { color: #ff4d5a; font-weight: bold; animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+  </style>
+</head>
+<body>
+
+  <div id="status">Status: Disconnected</div>
+  <video id="videoElement" autoplay playsinline muted></video>
+  
+  <div class="controls">
+    <button class="start" id="startBtn">Start Broadcast</button>
+    <button class="stop" id="stopBtn" disabled>Stop</button>
+  </div>
+
+  <canvas id="canvasElement" style="display: none;"></canvas>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const video = document.getElementById('videoElement');
+    const canvas = document.getElementById('canvasElement');
+    const ctx = canvas.getContext('2d');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const status = document.getElementById('status');
+    
+    let stream;
+    let streamInterval;
+    // Lower FPS for stability, we compress heavily for ultra-low latency
+    const FPS = 15; 
+    
+    socket.on('connect', () => {
+      status.textContent = 'Status: Connected to Server';
+    });
+
+    startBtn.addEventListener('click', async () => {
+      try {
+        // Request back camera
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }, 
+          audio: false 
+        });
+        video.srcObject = stream;
+        
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        status.innerHTML = 'Status: <span class="recording">LIVE BROADCASTING</span>';
+        
+        // Start capturing frames and sending via WebSockets
+        streamInterval = setInterval(() => {
+          if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Compress frame to JPEG (0.5 quality for speed)
+            const frameData = canvas.toDataURL('image/jpeg', 0.5);
+            
+            socket.emit('stream_frame', frameData);
+          }
+        }, 1000 / FPS);
+        
+      } catch (err) {
+        alert("Camera access denied or unavailable: " + err.message);
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      if (streamInterval) clearInterval(streamInterval);
+      if (stream) stream.getTracks().forEach(track => track.stop());
+      video.srcObject = null;
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      status.textContent = 'Status: Broadcast Stopped';
+    });
+  </script>
+</body>
+</html>
