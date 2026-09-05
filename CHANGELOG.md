@@ -11,3 +11,5 @@ All notable changes to this project will be documented in this file.
 - **MongoDB Schema**: Created `models/Violation.js` schema reflecting `demo_data.json` for 1:1 mapping with UI.
 - **Live Phone Streamer**: Created `streamer.html` for a mobile phone to capture and push frames via WebSockets.
 - **UI Integration**: Added `CAM-07` to `demo_data.json` and wired `index.html` to consume live WebSockets frames and autonomous violation events in real time.
+
+- **Documentation**: Added `RR2/README.md` detailing how to start the Node.js server, open the dashboard, and broadcast the WebSocket camera feed from a mobile phone.
